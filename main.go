@@ -205,7 +205,7 @@ SUBJOBDONE:
 	subtotals := calculateSubscribeResults(subresults, pubresults)
 
 	// print stats
-	printResults(pubresults, pubtotals, subresults, subtotals, *format)
+	printResults(pubresults, pubtotals, subresults, subtotals, *format, ntopics)
 
 	log.Println("All jobs done. Time spent for the benchmark: ", math.Round(float64(*count) / *lambda), "s")
 }
@@ -278,7 +278,7 @@ func calculateSubscribeResults(subresults []*SubResults, pubresults []*PubResult
 	return subtotals
 }
 
-func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresults []*SubResults, subtotals *TotalSubResults, format string) {
+func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresults []*SubResults, subtotals *TotalSubResults, format string, ntopics int) {
 	switch format {
 	case "json":
 		jr := JSONResults{
@@ -312,7 +312,7 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 			fmt.Printf("Forward latency max (ms):    %.3f\n", subres.FwdLatencyMax)
 			fmt.Printf("Forward latency std (ms):    %.3f\n", subres.FwdLatencyStd)
 			fmt.Printf("Mean forward latency (ms):   %.3f\n", subres.FwdLatencyMean)
-		}*/
+		}
 
 		fmt.Printf("\n")
 		fmt.Printf("================= TOTAL PUBLISHER (%d) =================\n", len(pubresults))
@@ -331,6 +331,14 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 		fmt.Printf("Forward latency min (ms):         %.3f\n", subtotals.FwdLatencyMin)
 		fmt.Printf("Forward latency max (ms):         %.3f\n", subtotals.FwdLatencyMax)
 		fmt.Printf("Forward latency mean std (ms):    %.3f\n", subtotals.FwdLatencyMeanStd)
+		fmt.Printf("Total Mean forward latency (ms):  %.3f\n\n", subtotals.FwdLatencyMeanAvg)
+		*/
+		fmt.Printf("Total publishers: %d on %d topics\n", len(pubresults), ntopics)
+		fmt.Printf("Total publish Success Ratio:   %.3f%% (%d/%d)\n", pubtotals.PubRatio*100, pubtotals.Successes, pubtotals.Successes+pubtotals.Failures)
+		fmt.Printf("Total Bandwidth (msg/sec):     %.3f\n\n", pubtotals.TotalMsgsPerSec)
+
+		fmt.Printf("Total subscribers: %d\n", len(subresults))
+		fmt.Printf("Total Forward Success Ratio:      %.3f%% (%d/%d)\n", subtotals.TotalFwdRatio*100, subtotals.TotalReceived, subtotals.TotalPublished)
 		fmt.Printf("Total Mean forward latency (ms):  %.3f\n\n", subtotals.FwdLatencyMeanAvg)
 	}
 	return
