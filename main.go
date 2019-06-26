@@ -86,18 +86,18 @@ type JSONResults struct {
 func main() {
 
 	var (
-		broker = flag.String("broker", "tcp://localhost:1883", "MQTT broker endpoint as scheme://host:port")
+		broker   = flag.String("broker", "tcp://localhost:1883", "MQTT broker endpoint as scheme://host:port")
 		username = flag.String("username", "", "MQTT username (empty if auth disabled)")
 		password = flag.String("password", "", "MQTT password (empty if auth disabled)")
-		pubqos   = flag.Int("pubqos", 0, "QoS for published messages")
-		subqos   = flag.Int("subqos", 0, "QoS for subscribed messages")
-		size     = flag.Int("size", 100, "Size of the messages payload (bytes)")
-		count    = flag.Int("count", 1, "Number of messages to send per pubclient")
-		clients  = flag.Int("clients", 10, "Number of clients pair to start")
+		pubqos   = flag.Int("pubqos", 0, "QoS for published messages, default is 0")
+		subqos   = flag.Int("subqos", 0, "QoS for subscribed messages, default is 0")
+		size     = flag.Int("size", 100, "Size of the messages payload (bytes), default is 10")
+		count    = flag.Int("count", 1, "Number of messages to send per pubclient, default is 1")
+		clients  = flag.Int("clients", 10, "Number of clients pair to start, default is 10")
 		format   = flag.String("format", "text", "Output format: text|json")
-		quiet    = flag.Bool("quiet", false, "Suppress logs while running")
-		lambda   = flag.Float64("pubrate", 1.0, "Publishing exponential rate (msg/sec)")
-		ntopics  = flag.Int("ntopics", 10, "Topics to subscribe, default 10")
+		quiet    = flag.Bool("quiet", false, "Suppress logs while running, default is false")
+		lambda   = flag.Float64("pubrate", 1.0, "Publishing exponential rate (msg/sec), default is 1")
+		ntopics  = flag.Int("ntopics", 10, "Topics to subscribe, default is 10")
 	)
 
 	flag.Parse()
@@ -107,8 +107,8 @@ func main() {
 
 	topic_slice := make([]string, 0)
 	k := 0
-	for i :=0; i < *clients; i++ {
-		topic_slice = append(topic_slice, "topics-" + strconv.Itoa(k))
+	for i := 0; i < *clients; i++ {
+		topic_slice = append(topic_slice, "topics-"+strconv.Itoa(k))
 		k++
 		if k == *ntopics {
 			k = 0
@@ -131,9 +131,9 @@ func main() {
 			BrokerURL:  *broker,
 			BrokerUser: *username,
 			BrokerPass: *password,
-			SubTopic: topic_slice[i],
-			SubQoS:   byte(*subqos),
-			Quiet:    *quiet,
+			SubTopic:   topic_slice[i],
+			SubQoS:     byte(*subqos),
+			Quiet:      *quiet,
 		}
 		go sub.run(subResCh, subDone, jobDone)
 	}
@@ -164,13 +164,13 @@ SUBJOBDONE:
 			BrokerURL:  *broker,
 			BrokerUser: *username,
 			BrokerPass: *password,
-			PubTopic: topic_slice[i],
-			MsgSize:  *size,
-			MsgCount: *count,
-			PubQoS:   byte(*pubqos),
-			Quiet:    *quiet,
-			Users:    *ntopics,
-			Lambda:   *lambda,
+			PubTopic:   topic_slice[i],
+			MsgSize:    *size,
+			MsgCount:   *count,
+			PubQoS:     byte(*pubqos),
+			Quiet:      *quiet,
+			Users:      *ntopics,
+			Lambda:     *lambda,
 		}
 		go c.run(pubResCh)
 	}
@@ -294,7 +294,7 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 		fmt.Println(string(out.Bytes()))
 	default:
 		fmt.Printf("\n")
-		for _, pubres := range pubresults {
+		/*for _, pubres := range pubresults {
 			fmt.Printf("=========== PUBLISHER %d ===========\n", pubres.ID)
 			fmt.Printf("Publish Success Ratio:   %.3f%% (%d/%d)\n", float64(pubres.Successes)/float64(pubres.Successes+pubres.Failures)*100, pubres.Successes, pubres.Successes+pubres.Failures)
 			fmt.Printf("Runtime (s):             %.3f\n", pubres.RunTime)
@@ -312,7 +312,8 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 			fmt.Printf("Forward latency max (ms):    %.3f\n", subres.FwdLatencyMax)
 			fmt.Printf("Forward latency std (ms):    %.3f\n", subres.FwdLatencyStd)
 			fmt.Printf("Mean forward latency (ms):   %.3f\n", subres.FwdLatencyMean)
-		}
+		}*/
+
 		fmt.Printf("\n")
 		fmt.Printf("================= TOTAL PUBLISHER (%d) =================\n", len(pubresults))
 		fmt.Printf("Total Publish Success Ratio:   %.3f%% (%d/%d)\n", pubtotals.PubRatio*100, pubtotals.Successes, pubtotals.Successes+pubtotals.Failures)
