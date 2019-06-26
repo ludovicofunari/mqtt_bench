@@ -87,17 +87,15 @@ func main() {
 
 	var (
 		broker = flag.String("broker", "tcp://localhost:1883", "MQTT broker endpoint as scheme://host:port")
-		//topic    = flag.String("topic", "/test", "MQTT topic for outgoing messages")
 		username = flag.String("username", "", "MQTT username (empty if auth disabled)")
 		password = flag.String("password", "", "MQTT password (empty if auth disabled)")
-		pubqos   = flag.Int("pubqos", 1, "QoS for published messages")
-		subqos   = flag.Int("subqos", 1, "QoS for subscribed messages")
+		pubqos   = flag.Int("pubqos", 0, "QoS for published messages")
+		subqos   = flag.Int("subqos", 0, "QoS for subscribed messages")
 		size     = flag.Int("size", 100, "Size of the messages payload (bytes)")
-		count    = flag.Int("count", 100, "Number of messages to send per pubclient")
+		count    = flag.Int("count", 1, "Number of messages to send per pubclient")
 		clients  = flag.Int("clients", 10, "Number of clients pair to start")
 		format   = flag.String("format", "text", "Output format: text|json")
 		quiet    = flag.Bool("quiet", false, "Suppress logs while running")
-		no_timer = flag.Bool("no_timer", false, "Suppress timer while running")
 		lambda   = flag.Float64("pubrate", 1.0, "Publishing exponential rate (msg/sec)")
 		ntopics  = flag.Int("ntopics", 10, "Topics to subscribe, default 10")
 	)
@@ -106,25 +104,6 @@ func main() {
 	if *clients < 1 {
 		log.Fatal("Invlalid arguments")
 	}
-
-	//file, file_error := os.Open("topics.txt")
-	//if file_error != nil {
-	//	log.Printf("Error '%v' opening file: '%s'", file_error, file.Name())
-	//}
-	//
-	//scanner := bufio.NewScanner(file)
-	//topic_slice := make([]string, 0)
-	//
-	//for scanner.Scan() {
-	//	topic_slice = append(topic_slice, scanner.Text())
-	//}
-
-	//rand.Seed(time.Now().UnixNano())
-	//random_index := rand.Intn(len(topic_slice))
-	//fmt.Println(topic_slice[random_index])
-	//random_index = rand.Intn(len(topic_slice))
-	//fmt.Println(topic_slice[random_index])
-	//time.Sleep(10 *time.Minute)
 
 	topic_slice := make([]string, 0)
 	k := 0
@@ -152,8 +131,6 @@ func main() {
 			BrokerURL:  *broker,
 			BrokerUser: *username,
 			BrokerPass: *password,
-			//SubTopic:   *topic + "-" + strconv.Itoa(i),
-			//SubTopic: topic_slice[rand.Intn(*ntopics)],
 			SubTopic: topic_slice[i],
 			SubQoS:   byte(*subqos),
 			Quiet:    *quiet,
@@ -173,10 +150,6 @@ SUBJOBDONE:
 				break SUBJOBDONE
 			}
 		}
-	}
-
-	if !*no_timer {
-		time.Sleep(30 * time.Second)
 	}
 
 	//start publish
@@ -200,10 +173,6 @@ SUBJOBDONE:
 			Lambda:   *lambda,
 		}
 		go c.run(pubResCh)
-	}
-
-	if !*no_timer {
-		time.Sleep(10 * time.Minute)
 	}
 
 	// collect the publish results
@@ -239,10 +208,6 @@ SUBJOBDONE:
 	printResults(pubresults, pubtotals, subresults, subtotals, *format)
 
 	log.Println("All jobs done. Time spent for the benchmark: ", math.Round(float64(*count) / *lambda), "s")
-
-	//if !*quiet {
-	//	log.Println("All jobs done. Time spent for the benchmark: ", math.Round(float64(*count)/ *lambda), "s")
-	//}
 }
 
 func calculatePublishResults(pubresults []*PubResults, totalTime time.Duration) *TotalPubResults {
