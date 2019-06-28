@@ -79,9 +79,9 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 			runResults.FwdLatencyMean = stats.StatsMean(forwardLatency)
 			runResults.FwdLatencyStd = stats.StatsSampleStandardDeviation(forwardLatency)
 			res <- runResults
-			if !c.Quiet {
-				log.Printf("SUBSCRIBER-%v is done subscribing\n", c.ID)
-			}
+			//if !c.Quiet {
+			//	log.Printf("SUBSCRIBER-%v is done subscribing\n", c.ID)
+			//}
 			return
 		}
 	}
