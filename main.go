@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"strconv"
-
 	//"bytes"
 	"encoding/json"
 	"flag"
@@ -34,6 +33,9 @@ type SubResults struct {
 	FwdLatencyMax  float64 `json:"fwd_time_max"`
 	FwdLatencyMean float64 `json:"fwd_time_mean"`
 	FwdLatencyStd  float64 `json:"fwd_time_std"`
+	SubsPerSec     float64 `json:"sub_per_sec"`
+	Duration       float64 `json: "duration"`
+	AvgMsgsPerSec   float64 `json:"avg_msgs_per_sec"`
 }
 
 // TotalSubResults describes results of all SUBSCRIBER / runs
@@ -45,6 +47,7 @@ type TotalSubResults struct {
 	FwdLatencyMax     float64 `json:"fwd_latency_max"`
 	FwdLatencyMeanAvg float64 `json:"fwd_latency_mean_avg"`
 	FwdLatencyMeanStd float64 `json:"fwd_latency_mean_std"`
+	TotalMsgsPerSec   float64 `json:"avg_msgs_per_sec"`
 }
 
 // PubResults describes results of a single PUBLISHER / run
@@ -91,12 +94,12 @@ func main() {
 		password = flag.String("password", "", "MQTT password (empty if auth disabled)")
 		pubqos   = flag.Int("pubqos", 0, "QoS for published messages, default is 0")
 		subqos   = flag.Int("subqos", 0, "QoS for subscribed messages, default is 0")
-		size     = flag.Int("size", 100, "Size of the messages payload (bytes), default is 10")
+		size     = flag.Int("size", 100, "Size of the messages payload (bytes), default is 100")
 		count    = flag.Int("count", 1, "Number of messages to send per pubclient, default is 1")
 		clients  = flag.Int("clients", 10, "Number of clients pair to start, default is 10")
 		format   = flag.String("format", "text", "Output format: text|json")
 		quiet    = flag.Bool("quiet", false, "Suppress logs while running, default is false")
-		lambda   = flag.Float64("pubrate", 1.0, "Publishing exponential rate (msg/sec), default is 1")
+		lambda   = flag.Float64("pubrate", 1.0, "Publishing exponential rate (msg/sec), default is 1.0")
 		ntopics  = flag.Int("ntopics", 10, "Topics to subscribe, default is 10")
 	)
 
@@ -107,7 +110,8 @@ func main() {
 
 	topic_slice := make([]string, 0)
 	k := 0
-	for i := 0; i < *clients; i++ {
+	
+    for i := 0; i < *clients; i++ {
 		topic_slice = append(topic_slice, "topics-"+strconv.Itoa(k))
 		k++
 		if k == *ntopics {
@@ -134,6 +138,7 @@ func main() {
 			SubTopic:   topic_slice[i],
 			SubQoS:     byte(*subqos),
 			Quiet:      *quiet,
+			Count:		*count,
 		}
 		go sub.run(subResCh, subDone, jobDone)
 	}
@@ -157,6 +162,8 @@ SUBJOBDONE:
 		log.Printf("Starting publish..\n")
 	}
 	pubResCh := make(chan *PubResults)
+	timeSeq := make(chan int)
+
 	start := time.Now()
 	for i := 0; i < *ntopics; i++ {
 		c := &PubClient{
@@ -172,7 +179,7 @@ SUBJOBDONE:
 			Users:      *ntopics,
 			Lambda:     *lambda,
 		}
-		go c.run(pubResCh)
+		go c.run(pubResCh, timeSeq)
 	}
 
 	// collect the publish results
@@ -180,6 +187,7 @@ SUBJOBDONE:
 	for i := 0; i < *ntopics; i++ {
 		pubresults[i] = <-pubResCh
 	}
+
 	totalTime := time.Now().Sub(start)
 	pubtotals := calculatePublishResults(pubresults, totalTime)
 
@@ -208,8 +216,14 @@ SUBJOBDONE:
 	printResults(pubresults, pubtotals, subresults, subtotals, *format, *ntopics)
 
 	//log.Println("All jobs done. Time spent for the benchmark: ", math.Round(float64(*count) / *lambda), "s")
-	fmt.Printf("All jobs done. Time spent for the benchmark: %vs\n", math.Round(float64(*count) / *lambda))
-	fmt.Println("======================================================")
+	log.Printf("All jobs done. Time spent for the benchmark: %vs\n", math.Round(float64(*count) / *lambda))
+	log.Println("======================================================")
+
+    //f,_ := os.Create("time_test.txt")
+    //for value := range ts {
+    //   fmt.Fprintln(f, value)  // print values to f, one per line
+    //}
+    //f.Close()
 }
 
 func calculatePublishResults(pubresults []*PubResults, totalTime time.Duration) *TotalPubResults {
@@ -252,6 +266,7 @@ func calculatePublishResults(pubresults []*PubResults, totalTime time.Duration) 
 func calculateSubscribeResults(subresults []*SubResults, pubresults []*PubResults) *TotalSubResults {
 	subtotals := new(TotalSubResults)
 	fwdLatencyMeans := make([]float64, len(subresults))
+	msgPerSec := make([]float64, len(subresults))
 
 	subtotals.FwdLatencyMin = subresults[0].FwdLatencyMin
 	for i, res := range subresults {
@@ -273,10 +288,13 @@ func calculateSubscribeResults(subresults []*SubResults, pubresults []*PubResult
 				res.FwdRatio = float64(res.Received) / float64(pubres.Successes)
 			}
 		}
+		msgPerSec[i] = res.AvgMsgsPerSec
+		subtotals.TotalMsgsPerSec += msgPerSec[i]
 	}
 	subtotals.FwdLatencyMeanAvg = stats.StatsMean(fwdLatencyMeans)
 	subtotals.FwdLatencyMeanStd = stats.StatsSampleStandardDeviation(fwdLatencyMeans)
 	subtotals.TotalFwdRatio = float64(subtotals.TotalReceived) / float64(subtotals.TotalPublished)
+	//subtotals.TotalMsgsPerSec += msgPerSec
 	return subtotals
 }
 
@@ -295,54 +313,55 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 
 		fmt.Println(string(out.Bytes()))
 	default:
-		fmt.Printf("\n")
-		/*for _, pubres := range pubresults {
-			fmt.Printf("=========== PUBLISHER %d ===========\n", pubres.ID)
-			fmt.Printf("Publish Success Ratio:   %.3f%% (%d/%d)\n", float64(pubres.Successes)/float64(pubres.Successes+pubres.Failures)*100, pubres.Successes, pubres.Successes+pubres.Failures)
-			fmt.Printf("Runtime (s):             %.3f\n", pubres.RunTime)
-			fmt.Printf("Pub time min (ms):       %.3f\n", pubres.PubTimeMin)
-			fmt.Printf("Pub time max (ms):       %.3f\n", pubres.PubTimeMax)
-			fmt.Printf("Pub time mean (ms):      %.3f\n", pubres.PubTimeMean)
-			fmt.Printf("Pub time std (ms):       %.3f\n", pubres.PubTimeStd)
-			fmt.Printf("Pub Bandwidth (msg/sec): %.3f\n", pubres.PubsPerSec)
-		}
-		fmt.Printf("\n")
-		for _, subres := range subresults {
-			fmt.Printf("=========== SUBSCRIBER %d ===========\n", subres.ID)
-			fmt.Printf("Forward Success Ratio:       %.3f%% (%d/%d)\n", subres.FwdRatio*100, subres.Received, subres.Published)
-			fmt.Printf("Forward latency min (ms):    %.3f\n", subres.FwdLatencyMin)
-			fmt.Printf("Forward latency max (ms):    %.3f\n", subres.FwdLatencyMax)
-			fmt.Printf("Forward latency std (ms):    %.3f\n", subres.FwdLatencyStd)
-			fmt.Printf("Mean forward latency (ms):   %.3f\n", subres.FwdLatencyMean)
-		}
+		//fmt.Printf("\n")
+		//for _, pubres := range pubresults {
+		//	fmt.Printf("=========== PUBLISHER %d ===========\n", pubres.ID)
+		//	fmt.Printf("Publish Success Ratio:   %.3f%% (%d/%d)\n", float64(pubres.Successes)/float64(pubres.Successes+pubres.Failures)*100, pubres.Successes, pubres.Successes+pubres.Failures)
+		//	fmt.Printf("Runtime (s):             %.3f\n", pubres.RunTime)
+		//	fmt.Printf("Pub time min (ms):       %.3f\n", pubres.PubTimeMin)
+		//	fmt.Printf("Pub time max (ms):       %.3f\n", pubres.PubTimeMax)
+		//	fmt.Printf("Pub time mean (ms):      %.3f\n", pubres.PubTimeMean)
+		//	fmt.Printf("Pub time std (ms):       %.3f\n", pubres.PubTimeStd)
+		//	fmt.Printf("Pub Bandwidth (msg/sec): %.3f\n", pubres.PubsPerSec)
+		//}
+		//fmt.Printf("\n")
+		//for _, subres := range subresults {
+		//	fmt.Printf("=========== SUBSCRIBER %d ===========\n", subres.ID)
+		//	fmt.Printf("Forward Success Ratio:       %.3f%% (%d/%d)\n", subres.FwdRatio*100, subres.Received, subres.Published)
+		//	fmt.Printf("Forward latency min (ms):    %.3f\n", subres.FwdLatencyMin)
+		//	fmt.Printf("Forward latency max (ms):    %.3f\n", subres.FwdLatencyMax)
+		//	fmt.Printf("Forward latency std (ms):    %.3f\n", subres.FwdLatencyStd)
+		//	fmt.Printf("Mean forward latency (ms):   %.3f\n", subres.FwdLatencyMean)
+        //                fmt.Printf("Average Receiving Rate (msg/sec):   %.3f\n", subres.AvgMsgsPerSec )
+		//}
 
-		fmt.Printf("\n")
-		fmt.Printf("================= TOTAL PUBLISHER (%d) =================\n", len(pubresults))
-		fmt.Printf("Total Publish Success Ratio:   %.3f%% (%d/%d)\n", pubtotals.PubRatio*100, pubtotals.Successes, pubtotals.Successes+pubtotals.Failures)
-		fmt.Printf("Total Runtime (sec):           %.3f\n", pubtotals.TotalRunTime)
-		fmt.Printf("Average Runtime (sec):         %.3f\n", pubtotals.AvgRunTime)
-		fmt.Printf("Pub time min (ms):             %.3f\n", pubtotals.PubTimeMin)
-		fmt.Printf("Pub time max (ms):             %.3f\n", pubtotals.PubTimeMax)
-		fmt.Printf("Pub time mean mean (ms):       %.3f\n", pubtotals.PubTimeMeanAvg)
-		fmt.Printf("Pub time mean std (ms):        %.3f\n", pubtotals.PubTimeMeanStd)
-		fmt.Printf("Average Bandwidth (msg/sec):   %.3f\n", pubtotals.AvgMsgsPerSec)
-		fmt.Printf("Total Bandwidth (msg/sec):     %.3f\n\n", pubtotals.TotalMsgsPerSec)
+		log.Printf("\n")
+		log.Printf("================= TOTAL PUBLISHER (%d) =================\n", len(pubresults))
+		log.Printf("Total Publish Success Ratio:   %.2f%% (%d/%d)\n", pubtotals.PubRatio*100, pubtotals.Successes, pubtotals.Successes+pubtotals.Failures)
+		log.Printf("Average Runtime (sec):         %.2f\n", pubtotals.AvgRunTime)
+		log.Printf("Pub time min (ms):             %.2f\n", pubtotals.PubTimeMin)
+		log.Printf("Pub time max (ms):             %.2f\n", pubtotals.PubTimeMax)
+		log.Printf("Pub time mean mean (ms):       %.2f\n", pubtotals.PubTimeMeanAvg)
+		log.Printf("Pub time mean std (ms):        %.2f\n", pubtotals.PubTimeMeanStd)
+		log.Printf("Average Bandwidth (msg/sec):   %.2f\n", pubtotals.AvgMsgsPerSec)
+		log.Printf("Total Bandwidth (msg/sec):     %.2f\n\n", pubtotals.TotalMsgsPerSec)
 
-		fmt.Printf("================= TOTAL SUBSCRIBER (%d) =================\n", len(subresults))
-		fmt.Printf("Total Forward Success Ratio:      %.3f%% (%d/%d)\n", subtotals.TotalFwdRatio*100, subtotals.TotalReceived, subtotals.TotalPublished)
-		fmt.Printf("Forward latency min (ms):         %.3f\n", subtotals.FwdLatencyMin)
-		fmt.Printf("Forward latency max (ms):         %.3f\n", subtotals.FwdLatencyMax)
-		fmt.Printf("Forward latency mean std (ms):    %.3f\n", subtotals.FwdLatencyMeanStd)
-		fmt.Printf("Total Mean forward latency (ms):  %.3f\n\n", subtotals.FwdLatencyMeanAvg)
-		*/
-		fmt.Printf("======================================================\n")
-		fmt.Printf("Total publishers: %d on %d topics\n", len(pubresults), ntopics)
-		fmt.Printf("Total publish Success Ratio:   %.2f%% (%d/%d)\n", pubtotals.PubRatio*100, pubtotals.Successes, pubtotals.Successes+pubtotals.Failures)
-		fmt.Printf("Total Bandwidth (msg/sec):     %.2f\n\n", pubtotals.TotalMsgsPerSec)
-
-		fmt.Printf("Total subscribers: %d on %d topics\n", len(subresults), ntopics)
-		fmt.Printf("Total Forward Success Ratio:      %.2f%% (%d/%d)\n", subtotals.TotalFwdRatio*100, subtotals.TotalReceived, subtotals.TotalPublished)
-		fmt.Printf("Total Mean forward latency (ms):  %.2f\n", subtotals.FwdLatencyMeanAvg)
+		log.Printf("================= TOTAL SUBSCRIBER (%d) =================\n", len(subresults))
+		log.Printf("Total Forward Success Ratio:      %.2f%% (%d/%d)\n", subtotals.TotalFwdRatio*100, subtotals.TotalReceived, subtotals.TotalPublished)
+		log.Printf("Forward latency min (ms):         %.2f\n", subtotals.FwdLatencyMin)
+		log.Printf("Forward latency max (ms):         %.2f\n", subtotals.FwdLatencyMax)
+		log.Printf("Forward latency mean std (ms):    %.2f\n", subtotals.FwdLatencyMeanStd)
+		log.Printf("Total Mean forward latency (ms):  %.2f\n\n", subtotals.FwdLatencyMeanAvg)
+		
+		//fmt.Printf("======================================================\n")
+		//fmt.Printf("Total publishers: %d on %d topics\n", len(pubresults), ntopics)
+		//fmt.Printf("Total publish Success Ratio:   %.2f%% (%d/%d)\n", pubtotals.PubRatio*100, pubtotals.Successes, pubtotals.Successes+pubtotals.Failures)
+		//fmt.Printf("Total Bandwidth (msg/sec):     %.2f\n", pubtotals.TotalMsgsPerSec)
+		//fmt.Printf("Total subscribers: %d on %d topics\n", len(subresults), ntopics)
+		//fmt.Printf("Total Forward Success Ratio:      %.2f%% (%d/%d) <----- \n", subtotals.TotalFwdRatio*100, subtotals.TotalReceived, subtotals.TotalPublished)
+		//fmt.Printf("Total Mean forward latency (ms):  %.2f\n", subtotals.FwdLatencyMeanAvg)
+		log.Printf("Total Receiving rate (msg/sec): %.2f\n", subtotals.TotalMsgsPerSec )
+		//fmt.Printf("Receiving rate: %.2f\n", subresults.Duration)
 	}
 	return
 }

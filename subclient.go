@@ -20,11 +20,16 @@ type SubClient struct {
 	SubTopic   string
 	SubQoS     byte
 	Quiet      bool
+	Count	   int
+	FirstTime  float64
+	LastTime   float64
 }
 
 func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bool) {
 	runResults := new(SubResults)
 	runResults.ID = c.ID
+	c.FirstTime = 0
+	c.LastTime = 0
 
 	forwardLatency := []float64{}
 	opts := mqtt.NewClientOptions().
@@ -34,6 +39,11 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 		SetAutoReconnect(true).
 		SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
 			recvTime := time.Now().UnixNano()
+                        if c.FirstTime==0 {
+                            c.FirstTime=float64(recvTime)
+                        }
+                        c.LastTime = float64(recvTime)
+			//started := time.Now()
 			payload := msg.Payload()
 			i := 0
 			for ; i < len(payload)-3; i++ {
@@ -44,10 +54,17 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 				}
 			}
 			runResults.Received++
-		}).
+			//rate:= float64(runResults.Received)/((c.LastTime-c.FirstTime)/1e9)
+			// log.Printf("SUBSCRIBER-%v, receiving rate %v \n", c.ID, rate)
+			//runResults.Duration += time.Now().Sub(started).Seconds()
+
+	}).
 		SetConnectionLostHandler(func(client mqtt.Client, reason error) {
 			log.Printf("SUBSCRIBER-%v lost connection to the broker: %v. Will reconnect...\n", c.ID, reason.Error())
 		})
+
+	//runResults.SubsPerSec = float64(runResults.Received) / duration.Seconds()
+
 	if c.BrokerUser != "" && c.BrokerPass != "" {
 		opts.SetUsername(c.BrokerUser)
 		opts.SetPassword(c.BrokerPass)
@@ -78,6 +95,8 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 			runResults.FwdLatencyMax = stats.StatsMax(forwardLatency)
 			runResults.FwdLatencyMean = stats.StatsMean(forwardLatency)
 			runResults.FwdLatencyStd = stats.StatsSampleStandardDeviation(forwardLatency)
+                        runResults.AvgMsgsPerSec = float64(runResults.Received)/((c.LastTime-c.FirstTime)/1e9)
+                        //log.Printf("SUBSCRIBER-%v, receiving rate %v \n", c.ID, runResults.AvgMsgsPerSec)
 			res <- runResults
 			//if !c.Quiet {
 			//	log.Printf("SUBSCRIBER-%v is done subscribing\n", c.ID)

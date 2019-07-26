@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
+        "math"
 )
 
 import (
@@ -28,7 +29,7 @@ type PubClient struct {
 	Lambda     float64
 }
 
-func (c *PubClient) run(res chan *PubResults) {
+func (c *PubClient) run(res chan *PubResults, ts chan int) {
 	newMsgs := make(chan *Message)
 	pubMsgs := make(chan *Message)
 	doneGen := make(chan bool)
@@ -72,16 +73,19 @@ func (c *PubClient) run(res chan *PubResults) {
 }
 
 func (c *PubClient) genMessages(ch chan *Message, done chan bool) {
-	var delay float64 = 1
-	r := rand.New(rand.NewSource(99))
+	//var delay float64 = 1
+	///r := rand.New(rand.NewSource(99))
+	//r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < c.MsgCount; i++ {
+		//delay = r.ExpFloat64() / c.Lambda
+                //time.Sleep(time.Duration(delay*1000000) * time.Microsecond)
+                //fmt.Println(delay)
+
 		ch <- &Message{
 			Topic: c.PubTopic,
 			QoS:   c.PubQoS,
 			//Payload: make([]byte, c.MsgSize),
 		}
-		delay = r.ExpFloat64() / c.Lambda
-		time.Sleep(time.Duration(delay*1000000) * time.Microsecond)
 	}
 	done <- true
 	// log.Printf("PUBLISHER %v is done generating messages\n", c.ID)
@@ -90,12 +94,17 @@ func (c *PubClient) genMessages(ch chan *Message, done chan bool) {
 
 func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan bool) {
 	onConnected := func(client mqtt.Client) {
-		ctr := 0
+		var delay float64 = 1
+                ctr := 0
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		for {
 			select {
 			case m := <-in:
-				m.Sent = time.Now()
-				m.Payload = bytes.Join([][]byte{[]byte(strconv.FormatInt(m.Sent.UnixNano(), 10)), make([]byte, c.MsgSize)}, []byte("#@#"))
+                                m.Sent = time.Now()
+                                convertedTime := strconv.FormatInt(m.Sent.UnixNano(), 10)
+				m.Payload = bytes.Join([][]byte{[]byte(convertedTime), make([]byte, c.MsgSize)}, []byte("#@#"))
+                                //print time
+				// fmt.Printf(strconv.FormatInt(time.Now().UnixNano(), 10) + "\n")
 				token := client.Publish(m.Topic, m.QoS, false, m.Payload)
 				token.Wait()
 				if token.Error() != nil {
@@ -107,6 +116,9 @@ func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan boo
 				}
 				out <- m
 				ctr++
+				delay = math.Max(r.ExpFloat64() / c.Lambda - float64(m.Delivered.Sub(m.Sent).Seconds()),0)
+                                //fmt.Println(m.Delivered.Sub(m.Sent).Seconds())
+                                time.Sleep(time.Duration(delay*1000000) * time.Microsecond)
 			case <-doneGen:
 				if !c.Quiet {
 					log.Printf("PUBLISHER-%v connected to broker %v, published on topic: %v\n", c.ID, c.BrokerURL, c.PubTopic)
