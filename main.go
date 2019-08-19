@@ -108,11 +108,12 @@ func main() {
 		log.Fatal("Invlalid arguments")
 	}
 
+	//Create slice with topics
 	topic_slice := make([]string, 0)
 	k := 0
-	
-    for i := 0; i < *clients; i++ {
-		topic_slice = append(topic_slice, "topics-"+strconv.Itoa(k))
+
+	for i := 0; i < *clients; i++ {
+		topic_slice = append(topic_slice, "topic-" + strconv.Itoa(k))
 		k++
 		if k == *ntopics {
 			k = 0
@@ -165,6 +166,7 @@ SUBJOBDONE:
 	timeSeq := make(chan int)
 
 	start := time.Now()
+
 	for i := 0; i < *ntopics; i++ {
 		c := &PubClient{
 			ID:         i,
@@ -215,15 +217,8 @@ SUBJOBDONE:
 	// print stats
 	printResults(pubresults, pubtotals, subresults, subtotals, *format, *ntopics)
 
-	//log.Println("All jobs done. Time spent for the benchmark: ", math.Round(float64(*count) / *lambda), "s")
 	log.Printf("All jobs done. Time spent for the benchmark: %vs\n", math.Round(float64(*count) / *lambda))
 	log.Println("======================================================")
-
-    //f,_ := os.Create("time_test.txt")
-    //for value := range ts {
-    //   fmt.Fprintln(f, value)  // print values to f, one per line
-    //}
-    //f.Close()
 }
 
 func calculatePublishResults(pubresults []*PubResults, totalTime time.Duration) *TotalPubResults {
@@ -352,7 +347,7 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 		log.Printf("Forward latency max (ms):         %.2f\n", subtotals.FwdLatencyMax)
 		log.Printf("Forward latency mean std (ms):    %.2f\n", subtotals.FwdLatencyMeanStd)
 		log.Printf("Total Mean forward latency (ms):  %.2f\n\n", subtotals.FwdLatencyMeanAvg)
-		
+
 		//fmt.Printf("======================================================\n")
 		//fmt.Printf("Total publishers: %d on %d topics\n", len(pubresults), ntopics)
 		//fmt.Printf("Total publish Success Ratio:   %.2f%% (%d/%d)\n", pubtotals.PubRatio*100, pubtotals.Successes, pubtotals.Successes+pubtotals.Failures)
