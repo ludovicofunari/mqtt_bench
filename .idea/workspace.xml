@@ -1,31 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="798ddff7-b432-4605-8f8a-1fc42090714f" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_pub_greedy_M1.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_pub_greedy_M2.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_pub_greedy_M4.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_pub_greedy_M6.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_pub_greedy_M8.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_pub_rnd_M1.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_pub_rnd_M2.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_pub_rnd_M4.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_pub_rnd_M6.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_pub_rnd_M8.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_sub_greedy_M1.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_sub_greedy_M2.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_sub_greedy_M4.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_sub_greedy_M6.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_sub_greedy_M8.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_sub_rnd_M1.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_sub_rnd_M2.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_sub_rnd_M4.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_sub_rnd_M6.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/files/social_vs_nodes_sub_rnd_M8.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scratch.go" beforeDir="false" afterPath="$PROJECT_DIR$/scratch.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scratch/scratch.go" beforeDir="false" />
-    </list>
+    <list default="true" id="798ddff7-b432-4605-8f8a-1fc42090714f" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -45,20 +21,11 @@
               </provider>
             </entry>
           </file>
-          <file pinned="false" current-in-tab="false">
+          <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/scratch.go">
               <provider selected="true" editor-type-id="text-editor">
                 <state relative-caret-position="272">
                   <caret line="20" column="36" selection-start-line="20" selection-start-column="36" selection-end-line="20" selection-end-column="36" />
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="true">
-            <entry file="file://$PROJECT_DIR$/.gitignore">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="34">
-                  <caret line="2" column="10" lean-forward="true" selection-start-line="2" selection-start-column="10" selection-end-line="2" selection-end-column="10" />
                 </state>
               </provider>
             </entry>
@@ -142,42 +109,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="ProjectPane">
-        <subPane>
-          <expand>
-            <path>
-              <item name="mqtt_bench" type="b2602c69:ProjectViewProjectNode" />
-              <item name="mqtt_bench" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="mqtt_bench" type="b2602c69:ProjectViewProjectNode" />
-              <item name="mqtt_bench" type="462c0819:PsiDirectoryNode" />
-              <item name="vendor" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="mqtt_bench" type="b2602c69:ProjectViewProjectNode" />
-              <item name="mqtt_bench" type="462c0819:PsiDirectoryNode" />
-              <item name="vendor" type="462c0819:PsiDirectoryNode" />
-              <item name="github.com" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="mqtt_bench" type="b2602c69:ProjectViewProjectNode" />
-              <item name="mqtt_bench" type="462c0819:PsiDirectoryNode" />
-              <item name="vendor" type="462c0819:PsiDirectoryNode" />
-              <item name="github.com" type="462c0819:PsiDirectoryNode" />
-              <item name="eclipse" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="mqtt_bench" type="b2602c69:ProjectViewProjectNode" />
-              <item name="mqtt_bench" type="462c0819:PsiDirectoryNode" />
-              <item name="vendor" type="462c0819:PsiDirectoryNode" />
-              <item name="github.com" type="462c0819:PsiDirectoryNode" />
-              <item name="GaryBoone" type="462c0819:PsiDirectoryNode" />
-            </path>
-          </expand>
-          <select />
-        </subPane>
-      </pane>
+      <pane id="ProjectPane" />
       <pane id="Scope" />
     </panes>
   </component>
@@ -284,7 +216,6 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1680" height="1050" extended-state="0" />
-    <editor active="true" />
     <layout>
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.20940171" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
@@ -624,13 +555,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/scratch.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="272">
-          <caret line="20" column="36" selection-start-line="20" selection-start-column="36" selection-end-line="20" selection-end-column="36" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/README.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
         <state split_layout="SPLIT">
@@ -643,6 +567,13 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="34">
           <caret line="2" column="10" lean-forward="true" selection-start-line="2" selection-start-column="10" selection-end-line="2" selection-end-column="10" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/scratch.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="272">
+          <caret line="20" column="36" selection-start-line="20" selection-start-column="36" selection-end-line="20" selection-end-column="36" />
         </state>
       </provider>
     </entry>
