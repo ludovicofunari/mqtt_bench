@@ -78,8 +78,8 @@ func (c *PubClient) genMessages(ch chan *Message, done chan bool) {
 	//r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < c.MsgCount; i++ {
 		//delay = r.ExpFloat64() / c.Lambda
-                //time.Sleep(time.Duration(delay*1000000) * time.Microsecond)
-                //fmt.Println(delay)
+    //time.Sleep(time.Duration(delay*1000000) * time.Microsecond)
+    //fmt.Println(delay)
 
 		ch <- &Message{
 			Topic: c.PubTopic,
@@ -95,15 +95,16 @@ func (c *PubClient) genMessages(ch chan *Message, done chan bool) {
 func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan bool) {
 	onConnected := func(client mqtt.Client) {
 		var delay float64 = 1
-                ctr := 0
+  	ctr := 0
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
 		for {
 			select {
 			case m := <-in:
-                                m.Sent = time.Now()
-                                convertedTime := strconv.FormatInt(m.Sent.UnixNano(), 10)
+				m.Sent = time.Now()
+				convertedTime := strconv.FormatInt(m.Sent.UnixNano(), 10)
 				m.Payload = bytes.Join([][]byte{[]byte(convertedTime), make([]byte, c.MsgSize)}, []byte("#@#"))
-                                //print time
+        //print time
 				// fmt.Printf(strconv.FormatInt(time.Now().UnixNano(), 10) + "\n")
 				token := client.Publish(m.Topic, m.QoS, false, m.Payload)
 				token.Wait()
@@ -117,8 +118,9 @@ func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan boo
 				out <- m
 				ctr++
 				delay = math.Max(r.ExpFloat64() / c.Lambda - float64(m.Delivered.Sub(m.Sent).Seconds()),0)
-                                //fmt.Println(m.Delivered.Sub(m.Sent).Seconds())
-                                time.Sleep(time.Duration(delay*1000000) * time.Microsecond)
+
+				//fmt.Println(m.Delivered.Sub(m.Sent).Seconds())
+        time.Sleep(time.Duration(delay*1000000) * time.Microsecond)
 			case <-doneGen:
 				if !c.Quiet {
 					log.Printf("PUBLISHER-%v connected to broker %v, published on topic: %v\n", c.ID, c.BrokerURL, c.PubTopic)

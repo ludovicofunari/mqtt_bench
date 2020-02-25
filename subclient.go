@@ -39,10 +39,10 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 		SetAutoReconnect(true).
 		SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
 			recvTime := time.Now().UnixNano()
-                        if c.FirstTime==0 {
-                            c.FirstTime=float64(recvTime)
-                        }
-                        c.LastTime = float64(recvTime)
+      if c.FirstTime==0 {
+          c.FirstTime=float64(recvTime)
+      }
+      c.LastTime = float64(recvTime)
 			//started := time.Now()
 			payload := msg.Payload()
 			i := 0
