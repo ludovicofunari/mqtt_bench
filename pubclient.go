@@ -16,11 +16,11 @@ import (
 )
 
 type PubClient struct {
-	ID         int
+	ID         string
 	BrokerURL  string
 	BrokerUser string
 	BrokerPass string
-	PubTopic   string
+	PubTopic   []int
 	MsgSize    int
 	MsgCount   int
 	PubQoS     byte
@@ -48,7 +48,7 @@ func (c *PubClient) run(res chan *PubResults, ts chan int) {
 		select {
 		case m := <-pubMsgs:
 			if m.Error {
-				log.Printf("PUBLISHER-%v ERROR publishing message: %v: at %v\n", c.ID, m.Topic, m.Sent.Unix())
+				log.Printf("Publisher-%v ERROR publishing message: %v: at %v\n", c.ID, m.Topic, m.Sent.Unix())
 				runResults.Failures++
 			} else {
 				// log.Printf("Message published: %v: sent: %v delivered: %v flight time: %v\n", m.Topic, m.Sent, m.Delivered, m.Delivered.Sub(m.Sent))
@@ -82,7 +82,8 @@ func (c *PubClient) genMessages(ch chan *Message, done chan bool) {
     //fmt.Println(delay)
 
 		ch <- &Message{
-			Topic: c.PubTopic,
+			Topic: "topic-" + strconv.Itoa(c.PubTopic[0]),
+			//Topic: c.PubTopic,
 			QoS:   c.PubQoS,
 			//Payload: make([]byte, c.MsgSize),
 		}
@@ -109,7 +110,7 @@ func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan boo
 				token := client.Publish(m.Topic, m.QoS, false, m.Payload)
 				token.Wait()
 				if token.Error() != nil {
-					log.Printf("PUBLISHER-%v Error sending message: %v\n", c.ID, token.Error())
+					log.Printf("Publisher-%v Error sending message: %v\n", c.ID, token.Error())
 					m.Error = true
 				} else {
 					m.Delivered = time.Now()
@@ -123,7 +124,7 @@ func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan boo
         time.Sleep(time.Duration(delay*1000000) * time.Microsecond)
 			case <-doneGen:
 				if !c.Quiet {
-					log.Printf("PUBLISHER-%v connected to broker %v, published on topic: %v\n", c.ID, c.BrokerURL, c.PubTopic)
+					log.Printf("Publisher-%v connected to broker %v, published on topic: %v\n", c.ID, c.BrokerURL, c.PubTopic)
 				}
 				donePub <- true
 				client.Disconnect(250)
@@ -139,7 +140,7 @@ func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan boo
 		SetAutoReconnect(true).
 		SetOnConnectHandler(onConnected).
 		SetConnectionLostHandler(func(client mqtt.Client, reason error) {
-			log.Printf("PUBLISHER-%v lost connection to the broker: %v. Will reconnect...\n", c.ID, reason.Error())
+			log.Printf("Publisher-%v lost connection to the broker: %v. Will reconnect...\n", c.ID, reason.Error())
 		})
 	if c.BrokerUser != "" && c.BrokerPass != "" {
 		opts.SetUsername(c.BrokerUser)
@@ -150,6 +151,6 @@ func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan boo
 	token.Wait()
 
 	if token.Error() != nil {
-		log.Printf("PUBLISHER-%v had error connecting to the broker: %v\n", c.ID, token.Error())
+		log.Printf("Publisher-%v had error connecting to the broker: %v. Error: %v\n", c.ID, c.BrokerURL, token.Error())
 	}
 }

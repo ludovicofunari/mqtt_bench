@@ -25,7 +25,7 @@ type Message struct {
 
 // SubResults describes results of a single SUBSCRIBER / run
 type SubResults struct {
-	ID             int     `json:"id"`
+	ID             string  `json:"id"`
 	Published      int64   `json:"actual_published"`
 	Received       int64   `json:"received"`
 	FwdRatio       float64 `json:"fwd_success_ratio"`
@@ -34,7 +34,7 @@ type SubResults struct {
 	FwdLatencyMean float64 `json:"fwd_time_mean"`
 	FwdLatencyStd  float64 `json:"fwd_time_std"`
 	SubsPerSec     float64 `json:"sub_per_sec"`
-	Duration       float64 `json: "duration"`
+	Duration       float64 `json:"duration"`
 	AvgMsgsPerSec   float64 `json:"avg_msgs_per_sec"`
 }
 
@@ -52,7 +52,7 @@ type TotalSubResults struct {
 
 // PubResults describes results of a single PUBLISHER / run
 type PubResults struct {
-	ID          int     `json:"id"`
+	ID          string     `json:"id"`
 	Successes   int64   `json:"pub_successes"`
 	Failures    int64   `json:"failures"`
 	RunTime     float64 `json:"run_time"`
@@ -89,6 +89,7 @@ type JSONResults struct {
 func main() {
 
 	var (
+		//broker   = flag.String("broker", "tcp://192.168.3.8:31750", "MQTT broker endpoint as scheme://host:port")
 		broker   = flag.String("broker", "tcp://localhost:1883", "MQTT broker endpoint as scheme://host:port")
 		username = flag.String("username", "", "MQTT username (empty if auth disabled)")
 		password = flag.String("password", "", "MQTT password (empty if auth disabled)")
@@ -104,21 +105,25 @@ func main() {
 	)
 
 	flag.Parse()
-	if *clients < 1 {
-		log.Fatal("Invlalid arguments")
-	}
 
 	//Create slice with topics
 	topic_slice := make([]string, 0)
+
+	if *clients < 1 {
+		log.Fatal("Invlalid arguments")
+	}
 	k := 0
 
 	for i := 0; i < *clients; i++ {
-		topic_slice = append(topic_slice, "topic-" + strconv.Itoa(k))
+		topic_slice = append(topic_slice, "topic-"+strconv.Itoa(k))
 		k++
 		if k == *ntopics {
 			k = 0
 		}
 	}
+
+	var user Users
+	user = populateFromFile("test.json")
 
 	//start subscribe
 	subResCh := make(chan *SubResults)
@@ -130,18 +135,33 @@ func main() {
 		log.Printf("Starting subscribe..\n")
 	}
 
-	for i := 0; i < *clients; i++ {
-		sub := &SubClient{
-			ID:         i,
-			BrokerURL:  *broker,
-			BrokerUser: *username,
-			BrokerPass: *password,
-			SubTopic:   topic_slice[i],
-			SubQoS:     byte(*subqos),
-			Quiet:      *quiet,
-			Count:		*count,
-		}
-		go sub.run(subResCh, subDone, jobDone)
+	///////////////////////////////////////
+	allTopics := make(map[string]byte)
+
+	allTopics["topic1"] = 0
+	allTopics["topic2"] = 0
+
+	for i := 0; i < len(user.Subscribers); i++ {
+		//for j := 0; j < len(user.Subscribers[i].TopicList); j++ {
+			sub := &SubClient{
+				ID: strconv.FormatFloat(user.Subscribers[i].SubID, 'f', -1, 64),
+				//ID:         i,
+				//BrokerURL:  "tcp://localhost:1883",
+				BrokerURL:  *broker,
+				BrokerUser: *username,
+				BrokerPass: *password,
+				//SubTopic:   "topic-" + strconv.Itoa(user.Subscribers[i].TopicList[0]),
+				//SubTopic:   user.Subscribers[i].TopicList,
+				SubTopic:   allTopics,
+				SubQoS:     byte(*subqos),
+				Quiet:      *quiet,
+				Count:      *count,
+			}
+			fmt.Print(sub.ID)
+			fmt.Println("---->", sub.SubTopic)
+
+			go sub.run(subResCh, subDone, jobDone)
+		//}
 	}
 
 SUBJOBDONE:
@@ -166,14 +186,16 @@ SUBJOBDONE:
 	timeSeq := make(chan int)
 
 	start := time.Now()
-
-	for i := 0; i < *ntopics; i++ {
+	for i := 0; i < len(user.Publishers); i++ {
 		c := &PubClient{
-			ID:         i,
+			ID:         strconv.FormatFloat(user.Publishers[i].PubID, 'f',-1,64),
+			//BrokerURL:  "tcp://localhost:1883",
 			BrokerURL:  *broker,
 			BrokerUser: *username,
 			BrokerPass: *password,
-			PubTopic:   topic_slice[i],
+			PubTopic:   user.Publishers[i].TopicList,
+			//PubTopic:   "topic-" + strconv.Itoa(user.Publishers[i].TopicList[0]),
+			//PubTopic:   topic_slice[i],
 			MsgSize:    *size,
 			MsgCount:   *count,
 			PubQoS:     byte(*pubqos),

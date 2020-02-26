@@ -13,11 +13,11 @@ import (
 )
 
 type SubClient struct {
-	ID         int
+	ID         string
 	BrokerURL  string
 	BrokerUser string
 	BrokerPass string
-	SubTopic   string
+	SubTopic   map[string]byte
 	SubQoS     byte
 	Quiet      bool
 	Count	   int
@@ -60,7 +60,7 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 
 	}).
 		SetConnectionLostHandler(func(client mqtt.Client, reason error) {
-			log.Printf("SUBSCRIBER-%v lost connection to the broker: %v. Will reconnect...\n", c.ID, reason.Error())
+			log.Printf("Subscriber-%v lost connection to the broker: %v. Will reconnect...\n", c.ID, reason.Error())
 		})
 
 	//runResults.SubsPerSec = float64(runResults.Received) / duration.Seconds()
@@ -72,17 +72,31 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 	client := mqtt.NewClient(opts)
 
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		log.Printf("SUBSCRIBER-%v had error connecting to the broker: %v\n", c.ID, token.Error())
+		log.Printf("Subscriber-%v had error connecting to the broker: %v\n", c.ID, token.Error())
 		return
 	}
 
-	if token := client.Subscribe(c.SubTopic, c.SubQoS, nil); token.Wait() && token.Error() != nil {
-		log.Printf("SUBSCRIBER-%v had error subscribe with topic: %v\n", c.ID, token.Error())
+
+
+	//for i := 0; i < len(c.SubTopic); i++ {
+	//	topic := "topic-" + strconv.Itoa(c.SubTopic[i])
+	//	fmt.Println(topic)
+	//
+	//}	//client.subscribe([("P1/#", 0),("P1/controller/registration", 0)])
+
+	//if token := client.Subscribe(c.SubTopic, c.SubQoS, nil); token.Wait() && token.Error() != nil {
+	//if token := client.Subscribe("topic-" + strconv.Itoa(c.SubTopic[0]), c.SubQoS, nil); token.Wait() && token.Error() != nil {
+
+
+	if token := client.SubscribeMultiple(c.SubTopic, nil); token.Wait() && token.Error() != nil {
+		log.Printf("Subscriber-%v had error subscribe with topic: %v. Error: %v\n", c.ID, c.SubTopic, token.Error())
 		return
 	}
+
+
 
 	if !c.Quiet {
-		log.Printf("SUBSCRIBER-%v connected to broker: %v on: %v\n", c.ID, c.BrokerURL, c.SubTopic)
+		log.Printf("Subscriber-%v connected to broker: %v on: %v\n", c.ID, c.BrokerURL, c.SubTopic)
 	}
 
 	subDone <- true
@@ -96,10 +110,10 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 			runResults.FwdLatencyMean = stats.StatsMean(forwardLatency)
 			runResults.FwdLatencyStd = stats.StatsSampleStandardDeviation(forwardLatency)
                         runResults.AvgMsgsPerSec = float64(runResults.Received)/((c.LastTime-c.FirstTime)/1e9)
-                        //log.Printf("SUBSCRIBER-%v, receiving rate %v \n", c.ID, runResults.AvgMsgsPerSec)
+                        //log.Printf("Subscriber-%v, receiving rate %v \n", c.ID, runResults.AvgMsgsPerSec)
 			res <- runResults
 			//if !c.Quiet {
-			//	log.Printf("SUBSCRIBER-%v is done subscribing\n", c.ID)
+			//	log.Printf("Subscriber-%v is done subscribing\n", c.ID)
 			//}
 			return
 		}
