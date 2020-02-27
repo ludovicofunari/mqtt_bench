@@ -89,28 +89,24 @@ type JSONResults struct {
 func main() {
 
 	var (
-		//broker   = flag.String("broker", "tcp://192.168.3.8:31750", "MQTT broker endpoint as scheme://host:port")
-		broker   = flag.String("broker", "tcp://localhost:1883", "MQTT broker endpoint as scheme://host:port")
-		username = flag.String("username", "", "MQTT username (empty if auth disabled)")
-		password = flag.String("password", "", "MQTT password (empty if auth disabled)")
-		pubqos   = flag.Int("pubqos", 0, "QoS for published messages, default is 0")
-		subqos   = flag.Int("subqos", 0, "QoS for subscribed messages, default is 0")
-		size     = flag.Int("size", 100, "Size of the messages payload (bytes), default is 100")
-		count    = flag.Int("count", 1, "Number of messages to send per pubclient, default is 1")
-		clients  = flag.Int("clients", 10, "Number of clients pair to start, default is 10")
-		format   = flag.String("format", "text", "Output format: text|json")
-		quiet    = flag.Bool("quiet", false, "Suppress logs while running, default is false")
-		lambda   = flag.Float64("pubrate", 1.0, "Publishing exponential rate (msg/sec), default is 1.0")
-		ntopics  = flag.Int("ntopics", 10, "Topics to subscribe, default is 10")
+		size   = flag.Int("size", 100, "Size of the messages payload (bytes), default is 100")
+		count  = flag.Int("count", 1, "Number of messages to send per pubclient, default is 1")
+		quiet  = flag.Bool("quiet", false, "Suppress logs while running, default is false")
+		lambda = flag.Float64("pubrate", 1.0, "Publishing exponential rate (msg/sec), default is 1.0")
+		file   = flag.String("file", "test.json", "Import subscribers, publishers and topic information from file")
 	)
 
 	flag.Parse()
 
-	if *clients < 1 {
-		log.Fatal("Invlalid arguments")
-	}
+	//if *clients < 1 {
+	//	log.Fatal("Invlalid arguments")
+	//}
 
-	*broker = ""
+	username := ""
+	password := ""
+	pubqos := 0
+	subqos := 0
+	format := "text"
 
 	//Create slice with topics
 	//topic_slice := make([]string, 0)
@@ -125,12 +121,9 @@ func main() {
 
 	var user Users
 	var arraySubTopics []map[string]byte
-	nodeMap := make(map[int]string)
+	nodeIDs := make(map[int]string)
 
-	user, arraySubTopics, nodeMap = populateFromFile("test.json")
-
-	fmt.Println(nodeMap[user.Subscribers[0].NodeID])
-	fmt.Println(nodeMap[user.Subscribers[1].NodeID])
+	user, arraySubTopics, nodeIDs = populateFromFile(*file)
 
 	//start subscribe
 	subResCh := make(chan *SubResults)
@@ -145,20 +138,15 @@ func main() {
 	for i := 0; i < len(user.Subscribers); i++ {
 		sub := &SubClient{
 			ID: strconv.FormatFloat(user.Subscribers[i].SubID, 'f', -1, 64),
-			//ID:         i,
 			//BrokerURL:  "tcp://localhost:1883",
-			BrokerURL:  nodeMap[user.Subscribers[i].NodeID],
-			BrokerUser: *username,
-			BrokerPass: *password,
-			//SubTopic:   "topic-" + strconv.Itoa(user.Subscribers[i].TopicList[0]),
-			//SubTopic:   user.Subscribers[i].TopicList,
-			SubTopic: arraySubTopics[i],
-			SubQoS:   byte(*subqos),
-			Quiet:    *quiet,
-			Count:    *count,
+			BrokerURL:  nodeIDs[user.Subscribers[i].NodeID],
+			BrokerUser: username,
+			BrokerPass: password,
+			SubTopic:   arraySubTopics[i],
+			SubQoS:     byte(subqos),
+			Quiet:      *quiet,
+			Count:      *count,
 		}
-
-		fmt.Printf("sub: %v ----> topic: %v\n", sub.ID, sub.SubTopic)
 		go sub.run(subResCh, subDone, jobDone)
 	}
 
@@ -190,27 +178,22 @@ SUBJOBDONE:
 		c := &PubClient{
 			ID: strconv.FormatFloat(user.Publishers[i].PubID, 'f', -1, 64),
 			//BrokerURL:  "tcp://localhost:1883",
-			BrokerURL:  nodeMap[user.Publishers[i].NodeID],
-			BrokerUser: *username,
-			BrokerPass: *password,
+			BrokerURL:  nodeIDs[user.Publishers[i].NodeID],
+			BrokerUser: username,
+			BrokerPass: password,
 			PubTopic:   user.Publishers[i].TopicList,
-			//PubTopic:   "topic-" + strconv.Itoa(user.Publishers[i].TopicList[0]),
-			//PubTopic:   topic_slice[i],
-			MsgSize:  *size,
-			MsgCount: *count,
-			PubQoS:   byte(*pubqos),
-			Quiet:    *quiet,
-			Users:    *ntopics,
-			Lambda:   *lambda,
+			MsgSize:    *size,
+			MsgCount:   *count,
+			PubQoS:     byte(pubqos),
+			Quiet:      *quiet,
+			Lambda:     *lambda,
 		}
 		go c.run(pubResCh, timeSeq)
 	}
 
 	// collect the publish results
-	//pubresults := make([]*PubResults, *ntopics)
 	pubresults := make([]*PubResults, len(user.Publishers))
 
-	//for i := 0; i < *ntopics; i++ {
 	for i := 0; i < len(user.Publishers); i++ {
 		pubresults[i] = <-pubResCh
 	}
@@ -240,7 +223,7 @@ SUBJOBDONE:
 	subtotals := calculateSubscribeResults(subresults, pubresults)
 
 	// print stats
-	printResults(pubresults, pubtotals, subresults, subtotals, *format, *ntopics)
+	printResults(pubresults, pubtotals, subresults, subtotals, format)
 
 	fmt.Printf("All jobs done. Time spent for the benchmark: %vs\n", math.Round(float64(*count) / *lambda))
 	fmt.Println("======================================================")
@@ -318,7 +301,7 @@ func calculateSubscribeResults(subresults []*SubResults, pubresults []*PubResult
 	return subtotals
 }
 
-func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresults []*SubResults, subtotals *TotalSubResults, format string, ntopics int) {
+func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresults []*SubResults, subtotals *TotalSubResults, format string) {
 	switch format {
 	case "json":
 		jr := JSONResults{

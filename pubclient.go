@@ -25,8 +25,8 @@ type PubClient struct {
 	MsgCount   int
 	PubQoS     byte
 	Quiet      bool
-	Users      int
-	Lambda     float64
+	//Users      int
+	Lambda float64
 }
 
 func (c *PubClient) run(res chan *PubResults, ts chan int) {

@@ -77,22 +77,16 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 		return
 	}
 
-	//for i := 0; i < len(c.SubTopic); i++ {
-	//	topic := "topic-" + strconv.Itoa(c.SubTopic[i])
-	//	fmt.Println(topic)
-	//
-	//}	//client.subscribe([("P1/#", 0),("P1/controller/registration", 0)])
-
-	//if token := client.Subscribe(c.SubTopic, c.SubQoS, nil); token.Wait() && token.Error() != nil {
-
 	//if token := client.Subscribe("topic-" + strconv.Itoa(c.SubTopic[0]), c.SubQoS, nil); token.Wait() && token.Error() != nil {
 	if token := client.SubscribeMultiple(c.SubTopic, nil); token.Wait() && token.Error() != nil {
-		log.Printf("Subscriber-%v had error subscribe with topic: %v. Error: %v\n", c.ID, c.SubTopic, token.Error())
+		log.Printf("Subscriber-%v had error in subscribing to topics. Error: %v\n", c.ID, token.Error())
+		//log.Printf("Subscriber-%v had error subscribe with topic: %v. Error: %v\n", c.ID, c.SubTopic, token.Error())
+		fmt.Println(c.SubTopic)
 		return
 	}
 
 	if !c.Quiet {
-		log.Printf("Subscriber-%v connected to broker: %v on: %v\n", c.ID, c.BrokerURL, c.SubTopic)
+		log.Printf("Subscriber-%v connected to broker: %v\n", c.ID, c.BrokerURL)
 	}
 
 	subDone <- true
