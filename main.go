@@ -106,26 +106,31 @@ func main() {
 
 	flag.Parse()
 
-	//Create slice with topics
-	topic_slice := make([]string, 0)
-
 	if *clients < 1 {
 		log.Fatal("Invlalid arguments")
 	}
-	k := 0
 
-	for i := 0; i < *clients; i++ {
-		topic_slice = append(topic_slice, "topic-"+strconv.Itoa(k))
-		k++
-		if k == *ntopics {
-			k = 0
-		}
-	}
+	*broker = ""
+
+	//Create slice with topics
+	//topic_slice := make([]string, 0)
+	//k := 0
+	//for i := 0; i < *clients; i++ {
+	//	topic_slice = append(topic_slice, "topic-"+strconv.Itoa(k))
+	//	k++
+	//	if k == *ntopics {
+	//		k = 0
+	//	}
+	//}
 
 	var user Users
 	var arraySubTopics []map[string]byte
+	nodeMap := make(map[int]string)
 
-	user, arraySubTopics = populateFromFile("test.json")
+	user, arraySubTopics, nodeMap = populateFromFile("test.json")
+
+	fmt.Println(nodeMap[user.Subscribers[0].NodeID])
+	fmt.Println(nodeMap[user.Subscribers[1].NodeID])
 
 	//start subscribe
 	subResCh := make(chan *SubResults)
@@ -142,7 +147,7 @@ func main() {
 			ID: strconv.FormatFloat(user.Subscribers[i].SubID, 'f', -1, 64),
 			//ID:         i,
 			//BrokerURL:  "tcp://localhost:1883",
-			BrokerURL:  *broker,
+			BrokerURL:  nodeMap[user.Subscribers[i].NodeID],
 			BrokerUser: *username,
 			BrokerPass: *password,
 			//SubTopic:   "topic-" + strconv.Itoa(user.Subscribers[i].TopicList[0]),
@@ -185,7 +190,7 @@ SUBJOBDONE:
 		c := &PubClient{
 			ID: strconv.FormatFloat(user.Publishers[i].PubID, 'f', -1, 64),
 			//BrokerURL:  "tcp://localhost:1883",
-			BrokerURL:  *broker,
+			BrokerURL:  nodeMap[user.Publishers[i].NodeID],
 			BrokerUser: *username,
 			BrokerPass: *password,
 			PubTopic:   user.Publishers[i].TopicList,
