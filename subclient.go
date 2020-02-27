@@ -20,7 +20,7 @@ type SubClient struct {
 	SubTopic   map[string]byte
 	SubQoS     byte
 	Quiet      bool
-	Count	   int
+	Count      int
 	FirstTime  float64
 	LastTime   float64
 }
@@ -31,7 +31,8 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 	c.FirstTime = 0
 	c.LastTime = 0
 
-	forwardLatency := []float64{}
+	var forwardLatency []float64
+
 	opts := mqtt.NewClientOptions().
 		AddBroker(c.BrokerURL).
 		SetClientID(fmt.Sprintf("sub-%v", c.ID)).
@@ -39,10 +40,10 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 		SetAutoReconnect(true).
 		SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
 			recvTime := time.Now().UnixNano()
-      if c.FirstTime==0 {
-          c.FirstTime=float64(recvTime)
-      }
-      c.LastTime = float64(recvTime)
+			if c.FirstTime == 0 {
+				c.FirstTime = float64(recvTime)
+			}
+			c.LastTime = float64(recvTime)
 			//started := time.Now()
 			payload := msg.Payload()
 			i := 0
@@ -58,7 +59,7 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 			// log.Printf("SUBSCRIBER-%v, receiving rate %v \n", c.ID, rate)
 			//runResults.Duration += time.Now().Sub(started).Seconds()
 
-	}).
+		}).
 		SetConnectionLostHandler(func(client mqtt.Client, reason error) {
 			log.Printf("Subscriber-%v lost connection to the broker: %v. Will reconnect...\n", c.ID, reason.Error())
 		})
@@ -76,8 +77,6 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 		return
 	}
 
-
-
 	//for i := 0; i < len(c.SubTopic); i++ {
 	//	topic := "topic-" + strconv.Itoa(c.SubTopic[i])
 	//	fmt.Println(topic)
@@ -85,15 +84,12 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 	//}	//client.subscribe([("P1/#", 0),("P1/controller/registration", 0)])
 
 	//if token := client.Subscribe(c.SubTopic, c.SubQoS, nil); token.Wait() && token.Error() != nil {
+
 	//if token := client.Subscribe("topic-" + strconv.Itoa(c.SubTopic[0]), c.SubQoS, nil); token.Wait() && token.Error() != nil {
-
-
 	if token := client.SubscribeMultiple(c.SubTopic, nil); token.Wait() && token.Error() != nil {
 		log.Printf("Subscriber-%v had error subscribe with topic: %v. Error: %v\n", c.ID, c.SubTopic, token.Error())
 		return
 	}
-
-
 
 	if !c.Quiet {
 		log.Printf("Subscriber-%v connected to broker: %v on: %v\n", c.ID, c.BrokerURL, c.SubTopic)
@@ -109,8 +105,8 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 			runResults.FwdLatencyMax = stats.StatsMax(forwardLatency)
 			runResults.FwdLatencyMean = stats.StatsMean(forwardLatency)
 			runResults.FwdLatencyStd = stats.StatsSampleStandardDeviation(forwardLatency)
-                        runResults.AvgMsgsPerSec = float64(runResults.Received)/((c.LastTime-c.FirstTime)/1e9)
-                        //log.Printf("Subscriber-%v, receiving rate %v \n", c.ID, runResults.AvgMsgsPerSec)
+			runResults.AvgMsgsPerSec = float64(runResults.Received) / ((c.LastTime - c.FirstTime) / 1e9)
+			//log.Printf("Subscriber-%v, receiving rate %v \n", c.ID, runResults.AvgMsgsPerSec)
 			res <- runResults
 			//if !c.Quiet {
 			//	log.Printf("Subscriber-%v is done subscribing\n", c.ID)

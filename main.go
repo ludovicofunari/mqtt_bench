@@ -35,7 +35,7 @@ type SubResults struct {
 	FwdLatencyStd  float64 `json:"fwd_time_std"`
 	SubsPerSec     float64 `json:"sub_per_sec"`
 	Duration       float64 `json:"duration"`
-	AvgMsgsPerSec   float64 `json:"avg_msgs_per_sec"`
+	AvgMsgsPerSec  float64 `json:"avg_msgs_per_sec"`
 }
 
 // TotalSubResults describes results of all SUBSCRIBER / runs
@@ -52,7 +52,7 @@ type TotalSubResults struct {
 
 // PubResults describes results of a single PUBLISHER / run
 type PubResults struct {
-	ID          string     `json:"id"`
+	ID          string  `json:"id"`
 	Successes   int64   `json:"pub_successes"`
 	Failures    int64   `json:"failures"`
 	RunTime     float64 `json:"run_time"`
@@ -123,7 +123,9 @@ func main() {
 	}
 
 	var user Users
-	user = populateFromFile("test.json")
+	var arraySubTopics []map[string]byte
+
+	user, arraySubTopics = populateFromFile("test.json")
 
 	//start subscribe
 	subResCh := make(chan *SubResults)
@@ -135,33 +137,24 @@ func main() {
 		log.Printf("Starting subscribe..\n")
 	}
 
-	///////////////////////////////////////
-	allTopics := make(map[string]byte)
-
-	allTopics["topic1"] = 0
-	allTopics["topic2"] = 0
-
 	for i := 0; i < len(user.Subscribers); i++ {
-		//for j := 0; j < len(user.Subscribers[i].TopicList); j++ {
-			sub := &SubClient{
-				ID: strconv.FormatFloat(user.Subscribers[i].SubID, 'f', -1, 64),
-				//ID:         i,
-				//BrokerURL:  "tcp://localhost:1883",
-				BrokerURL:  *broker,
-				BrokerUser: *username,
-				BrokerPass: *password,
-				//SubTopic:   "topic-" + strconv.Itoa(user.Subscribers[i].TopicList[0]),
-				//SubTopic:   user.Subscribers[i].TopicList,
-				SubTopic:   allTopics,
-				SubQoS:     byte(*subqos),
-				Quiet:      *quiet,
-				Count:      *count,
-			}
-			fmt.Print(sub.ID)
-			fmt.Println("---->", sub.SubTopic)
+		sub := &SubClient{
+			ID: strconv.FormatFloat(user.Subscribers[i].SubID, 'f', -1, 64),
+			//ID:         i,
+			//BrokerURL:  "tcp://localhost:1883",
+			BrokerURL:  *broker,
+			BrokerUser: *username,
+			BrokerPass: *password,
+			//SubTopic:   "topic-" + strconv.Itoa(user.Subscribers[i].TopicList[0]),
+			//SubTopic:   user.Subscribers[i].TopicList,
+			SubTopic: arraySubTopics[i],
+			SubQoS:   byte(*subqos),
+			Quiet:    *quiet,
+			Count:    *count,
+		}
 
-			go sub.run(subResCh, subDone, jobDone)
-		//}
+		fmt.Printf("sub: %v ----> topic: %v\n", sub.ID, sub.SubTopic)
+		go sub.run(subResCh, subDone, jobDone)
 	}
 
 SUBJOBDONE:
@@ -169,7 +162,7 @@ SUBJOBDONE:
 		select {
 		case <-subDone:
 			subCnt++
-			if subCnt == *clients {
+			if subCnt == len(user.Subscribers) {
 				if !*quiet {
 					log.Printf("all subscribe job done.\n")
 				}
@@ -177,6 +170,8 @@ SUBJOBDONE:
 			}
 		}
 	}
+
+	//time.Sleep(30 * time.Second)
 
 	//start publish
 	if !*quiet {
@@ -188,7 +183,7 @@ SUBJOBDONE:
 	start := time.Now()
 	for i := 0; i < len(user.Publishers); i++ {
 		c := &PubClient{
-			ID:         strconv.FormatFloat(user.Publishers[i].PubID, 'f',-1,64),
+			ID: strconv.FormatFloat(user.Publishers[i].PubID, 'f', -1, 64),
 			//BrokerURL:  "tcp://localhost:1883",
 			BrokerURL:  *broker,
 			BrokerUser: *username,
@@ -196,19 +191,22 @@ SUBJOBDONE:
 			PubTopic:   user.Publishers[i].TopicList,
 			//PubTopic:   "topic-" + strconv.Itoa(user.Publishers[i].TopicList[0]),
 			//PubTopic:   topic_slice[i],
-			MsgSize:    *size,
-			MsgCount:   *count,
-			PubQoS:     byte(*pubqos),
-			Quiet:      *quiet,
-			Users:      *ntopics,
-			Lambda:     *lambda,
+			MsgSize:  *size,
+			MsgCount: *count,
+			PubQoS:   byte(*pubqos),
+			Quiet:    *quiet,
+			Users:    *ntopics,
+			Lambda:   *lambda,
 		}
 		go c.run(pubResCh, timeSeq)
 	}
 
 	// collect the publish results
-	pubresults := make([]*PubResults, *ntopics)
-	for i := 0; i < *ntopics; i++ {
+	//pubresults := make([]*PubResults, *ntopics)
+	pubresults := make([]*PubResults, len(user.Publishers))
+
+	//for i := 0; i < *ntopics; i++ {
+	for i := 0; i < len(user.Publishers); i++ {
 		pubresults[i] = <-pubResCh
 	}
 
@@ -223,13 +221,13 @@ SUBJOBDONE:
 	}
 
 	// notify subscriber that job done
-	for i := 0; i < *clients; i++ {
+	for i := 0; i < len(user.Subscribers); i++ {
 		jobDone <- true
 	}
 
 	// collect subscribe results
-	subresults := make([]*SubResults, *clients)
-	for i := 0; i < *clients; i++ {
+	subresults := make([]*SubResults, len(user.Subscribers))
+	for i := 0; i < len(user.Subscribers); i++ {
 		subresults[i] = <-subResCh
 	}
 
@@ -349,7 +347,7 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 		//	fmt.Printf("Forward latency max (ms):    %.3f\n", subres.FwdLatencyMax)
 		//	fmt.Printf("Forward latency std (ms):    %.3f\n", subres.FwdLatencyStd)
 		//	fmt.Printf("Mean forward latency (ms):   %.3f\n", subres.FwdLatencyMean)
-        //                fmt.Printf("Average Receiving Rate (msg/sec):   %.3f\n", subres.AvgMsgsPerSec )
+		//                fmt.Printf("Average Receiving Rate (msg/sec):   %.3f\n", subres.AvgMsgsPerSec )
 		//}
 
 		fmt.Printf("\n")
@@ -377,7 +375,7 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 		//fmt.Printf("Total subscribers: %d on %d topics\n", len(subresults), ntopics)
 		//fmt.Printf("Total Forward Success Ratio:      %.2f%% (%d/%d) <----- \n", subtotals.TotalFwdRatio*100, subtotals.TotalReceived, subtotals.TotalPublished)
 		//fmt.Printf("Total Mean forward latency (ms):  %.2f\n", subtotals.FwdLatencyMeanAvg)
-		fmt.Printf("Total Receiving rate (msg/sec): %.2f\n", subtotals.TotalMsgsPerSec )
+		fmt.Printf("Total Receiving rate (msg/sec): %.2f\n", subtotals.TotalMsgsPerSec)
 		//fmt.Printf("Receiving rate: %.2f\n", subresults.Duration)
 	}
 	return
