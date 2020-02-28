@@ -24,7 +24,7 @@ type Subscriber struct {
 	TopicList []int   `json:"topic_list"`
 }
 
-func populateFromFile(fileName string) (Users, []map[string]byte, map[int]string) {
+func populateFromFile(fileName string, nodeport int) (Users, []map[string]byte, map[int]string) {
 
 	file, err := ioutil.ReadFile(fileName)
 	if err != nil {
@@ -38,22 +38,23 @@ func populateFromFile(fileName string) (Users, []map[string]byte, map[int]string
 	}
 
 	nodeIDs := make(map[int]string)
-	nodePort := "31708"
+
+	nodePort := strconv.Itoa(nodeport)
 	nodeIDs[0] = "tcp://localhost:1883"
 	nodeIDs[1] = "tcp://192.168.3.4:" + nodePort
 	nodeIDs[2] = "tcp://192.168.3.5:" + nodePort
 
-	var arraySubTopics []map[string]byte
-	subTopics := make(map[string]byte)
-
+	arraySubTopics := make([]map[string]byte, len(user.Subscribers))
 	var str string
 
-	for _, sub := range user.Subscribers {
+	for indexSub, sub := range user.Subscribers {
+		subTopics := make(map[string]byte)
+
 		for _, top := range sub.TopicList {
 			str = strconv.Itoa(top)
 			subTopics[str] = 0
 		}
-		arraySubTopics = append(arraySubTopics, subTopics)
+		arraySubTopics[indexSub] = subTopics
 	}
 
 	return user, arraySubTopics, nodeIDs

@@ -89,11 +89,12 @@ type JSONResults struct {
 func main() {
 
 	var (
-		size   = flag.Int("size", 100, "Size of the messages payload (bytes), default is 100")
-		count  = flag.Int("count", 1, "Number of messages to send per pubclient, default is 1")
-		quiet  = flag.Bool("quiet", false, "Suppress logs while running, default is false")
-		lambda = flag.Float64("pubrate", 1.0, "Publishing exponential rate (msg/sec), default is 1.0")
-		file   = flag.String("file", "test.json", "Import subscribers, publishers and topic information from file")
+		size     = flag.Int("size", 100, "Size of the messages payload (bytes).")
+		count    = flag.Int("count", 1, "Number of messages to send per pubclient.")
+		quiet    = flag.Bool("quiet", false, "Suppress logs while running, default is false")
+		lambda   = flag.Float64("pubrate", 1.0, "Publishing exponential rate (msg/sec).")
+		file     = flag.String("file", "test.json", "Import subscribers, publishers and topic information from file.")
+		nodeport = flag.Int("nodeport", 30123, "Kubernetes NodepPort for VerneMQ MQTT service.")
 	)
 
 	flag.Parse()
@@ -122,8 +123,9 @@ func main() {
 	var user Users
 	var arraySubTopics []map[string]byte
 	nodeIDs := make(map[int]string)
+	nodeIDs[0] = "ok"
 
-	user, arraySubTopics, nodeIDs = populateFromFile(*file)
+	user, arraySubTopics, nodeIDs = populateFromFile(*file, *nodeport)
 
 	//start subscribe
 	subResCh := make(chan *SubResults)
@@ -164,11 +166,12 @@ SUBJOBDONE:
 		}
 	}
 
-	//time.Sleep(30 * time.Second)
+	//time.Sleep(3600 * time.Second)
+	//log.Println("Time is up.")
 
 	//start publish
 	if !*quiet {
-		log.Printf("Starting publish..\n")
+		log.Printf("Starting publish...\n")
 	}
 	pubResCh := make(chan *PubResults)
 	timeSeq := make(chan int)
