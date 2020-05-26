@@ -123,7 +123,6 @@ func main() {
 	var user Users
 	var arraySubTopics []map[string]byte
 	nodeIDs := make(map[int]string)
-	nodeIDs[0] = "ok"
 
 	user, arraySubTopics, nodeIDs = populateFromFile(*file, *nodeport)
 
@@ -133,9 +132,7 @@ func main() {
 	subDone := make(chan bool)
 	subCnt := 0
 
-	if !*quiet {
-		log.Printf("Starting subscribe..\n")
-	}
+	log.Printf("Starting to subscribe..\n")
 
 	for i := 0; i < len(user.Subscribers); i++ {
 		sub := &SubClient{
@@ -158,9 +155,10 @@ SUBJOBDONE:
 		case <-subDone:
 			subCnt++
 			if subCnt == len(user.Subscribers) {
-				if !*quiet {
-					log.Printf("all subscribe job done.\n")
-				}
+				//if !*quiet {
+				//log.Printf("all subscribe job done.\n")
+				//}
+				log.Println("All subscriptions done.\n")
 				break SUBJOBDONE
 			}
 		}
@@ -170,9 +168,8 @@ SUBJOBDONE:
 	//log.Println("Time is up.")
 
 	//start publish
-	if !*quiet {
-		log.Printf("Starting publish...\n")
-	}
+	log.Printf("Starting to publish...\n")
+
 	pubResCh := make(chan *PubResults)
 	timeSeq := make(chan int)
 
@@ -206,9 +203,7 @@ SUBJOBDONE:
 
 	for i := 0; i < 3; i++ {
 		time.Sleep(1 * time.Second)
-		if !*quiet {
-			log.Printf("Benchmark will stop after %v seconds.\n", 3-i)
-		}
+		log.Printf("Benchmark will stop after %v seconds.\n", 3-i)
 	}
 
 	// notify subscriber that job done
