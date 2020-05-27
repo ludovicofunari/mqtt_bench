@@ -89,12 +89,13 @@ type JSONResults struct {
 func main() {
 
 	var (
-		size     = flag.Int("size", 100, "Size of the messages payload (bytes).")
-		count    = flag.Int("count", 1, "Number of messages to send per pubclient.")
-		quiet    = flag.Bool("quiet", false, "Suppress logs while running, default is false")
-		lambda   = flag.Float64("pubrate", 1.0, "Publishing exponential rate (msg/sec).")
-		file     = flag.String("file", "test.json", "Import subscribers, publishers and topic information from file.")
-		nodeport = flag.Int("nodeport", 30123, "Kubernetes NodepPort for VerneMQ MQTT service.")
+		size         = flag.Int("size", 100, "Size of the messages payload (bytes).")
+		count        = flag.Int("count", 1, "Number of messages to send per pubclient.")
+		quiet        = flag.Bool("quiet", false, "Suppress logs while running, default is false")
+		lambda       = flag.Float64("pubrate", 1.0, "Publishing exponential rate (msg/sec).")
+		file         = flag.String("file", "test.json", "Import subscribers, publishers and topic information from file.")
+		nodeport     = flag.Int("nodeport", 30123, "Kubernetes NodepPort for VerneMQ MQTT service.")
+		distribution = flag.String("dist", "poisson", "Select distribution Poisson or Lognormal (default Poisson)")
 	)
 
 	flag.Parse()
@@ -132,7 +133,9 @@ func main() {
 	subDone := make(chan bool)
 	subCnt := 0
 
-	log.Printf("Starting to subscribe..\n")
+	if !*quiet {
+		log.Printf("Starting subscribe..\n")
+	}
 
 	for i := 0; i < len(user.Subscribers); i++ {
 		sub := &SubClient{
@@ -155,10 +158,9 @@ SUBJOBDONE:
 		case <-subDone:
 			subCnt++
 			if subCnt == len(user.Subscribers) {
-				//if !*quiet {
-				//log.Printf("all subscribe job done.\n")
-				//}
-				log.Println("All subscriptions done.\n")
+				if !*quiet {
+					log.Printf("all subscribe job done.\n")
+				}
 				break SUBJOBDONE
 			}
 		}
@@ -168,8 +170,9 @@ SUBJOBDONE:
 	//log.Println("Time is up.")
 
 	//start publish
-	log.Printf("Starting to publish...\n")
-
+	if !*quiet {
+		log.Printf("Starting publish...\n")
+	}
 	pubResCh := make(chan *PubResults)
 	timeSeq := make(chan int)
 
@@ -188,7 +191,7 @@ SUBJOBDONE:
 			Quiet:      *quiet,
 			Lambda:     *lambda,
 		}
-		go c.run(pubResCh, timeSeq)
+		go c.run(pubResCh, timeSeq, *distribution)
 	}
 
 	// collect the publish results
@@ -203,7 +206,9 @@ SUBJOBDONE:
 
 	for i := 0; i < 3; i++ {
 		time.Sleep(1 * time.Second)
-		log.Printf("Benchmark will stop after %v seconds.\n", 3-i)
+		if !*quiet {
+			log.Printf("Benchmark will stop after %v seconds.\n", 3-i)
+		}
 	}
 
 	// notify subscriber that job done

@@ -3,9 +3,13 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"gonum.org/v1/gonum/stat/distuv"
 	"log"
 	"math"
-	"math/rand"
+	"strings"
+
+	"golang.org/x/exp/rand"
+	//"math/rand"
 	"strconv"
 	"time"
 )
@@ -29,7 +33,7 @@ type PubClient struct {
 	Lambda float64
 }
 
-func (c *PubClient) run(res chan *PubResults, ts chan int) {
+func (c *PubClient) run(res chan *PubResults, ts chan int, distribution string) {
 	newMsgs := make(chan *Message)
 	pubMsgs := make(chan *Message)
 	doneGen := make(chan bool)
@@ -40,7 +44,7 @@ func (c *PubClient) run(res chan *PubResults, ts chan int) {
 	// start generator
 	go c.genMessages(newMsgs, doneGen)
 	// start publisher
-	go c.pubMessages(newMsgs, pubMsgs, doneGen, donePub)
+	go c.pubMessages(newMsgs, pubMsgs, doneGen, donePub, distribution)
 
 	runResults.ID = c.ID
 	times := []float64{}
@@ -94,11 +98,11 @@ func (c *PubClient) genMessages(ch chan *Message, done chan bool) {
 	return
 }
 
-func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan bool) {
+func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan bool, distribution string) {
 	onConnected := func(client mqtt.Client) {
 		var delay float64 = 1
 		ctr := 0
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		//r := rand.New(rand.NewSource(uint64(time.Now().UnixNano())))
 
 		for {
 			select {
@@ -119,7 +123,21 @@ func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan boo
 				}
 				out <- m
 				ctr++
-				delay = math.Max(r.ExpFloat64()/c.Lambda-float64(m.Delivered.Sub(m.Sent).Seconds()), 0)
+
+				// for poisson distribution
+				if strings.ToLower(distribution) == "poisson" {
+					r := rand.New(rand.NewSource(uint64(time.Now().UnixNano())))
+					delay = math.Max(r.ExpFloat64()/c.Lambda-float64(m.Delivered.Sub(m.Sent).Seconds()), 0)
+				} else if strings.ToLower(distribution) == "lognormal" {
+					// for lognormal distribution
+					cv := 4
+					Ti := 1 / c.Lambda
+					v := math.Pow(float64(cv)*Ti, 2)
+					mu := math.Log(math.Pow(Ti, 2) / math.Sqrt(v+math.Pow(Ti, 2)))
+					sigma := math.Sqrt(math.Log(v/math.Pow(Ti, 2) + 1))
+					src := rand.New(rand.NewSource(uint64(time.Now().UnixNano())))
+					delay = distuv.LogNormal{Mu: mu, Sigma: sigma, Src: src}.Rand()
+				}
 
 				//fmt.Println(m.Delivered.Sub(m.Sent).Seconds())
 				time.Sleep(time.Duration(delay*1000000) * time.Microsecond)
