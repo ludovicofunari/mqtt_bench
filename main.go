@@ -95,7 +95,8 @@ func main() {
 		lambda       = flag.Float64("pubrate", 1.0, "Publishing exponential rate (msg/sec).")
 		file         = flag.String("file", "test.json", "Import subscribers, publishers and topic information from file.")
 		nodeport     = flag.Int("nodeport", 30123, "Kubernetes NodepPort for VerneMQ MQTT service.")
-		distribution = flag.String("dist", "poisson", "Select distribution Poisson or Lognormal (default Poisson)")
+		distribution = flag.String("dist", "poisson", "Select Poisson or Lognormal distribution (default Poisson)")
+		cv           = flag.Int("cv", 4, "Select coefficient of variation for the Lognormal distribution (default 4)")
 	)
 
 	flag.Parse()
@@ -191,7 +192,7 @@ SUBJOBDONE:
 			Quiet:      *quiet,
 			Lambda:     *lambda,
 		}
-		go c.run(pubResCh, timeSeq, *distribution)
+		go c.run(pubResCh, timeSeq, *distribution, *cv)
 	}
 
 	// collect the publish results
@@ -319,28 +320,6 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 
 		fmt.Println(string(out.Bytes()))
 	default:
-		//fmt.Printf("\n")
-		//for _, pubres := range pubresults {
-		//	fmt.Printf("=========== PUBLISHER %d ===========\n", pubres.ID)
-		//	fmt.Printf("Publish Success Ratio:   %.3f%% (%d/%d)\n", float64(pubres.Successes)/float64(pubres.Successes+pubres.Failures)*100, pubres.Successes, pubres.Successes+pubres.Failures)
-		//	fmt.Printf("Runtime (s):             %.3f\n", pubres.RunTime)
-		//	fmt.Printf("Pub time min (ms):       %.3f\n", pubres.PubTimeMin)
-		//	fmt.Printf("Pub time max (ms):       %.3f\n", pubres.PubTimeMax)
-		//	fmt.Printf("Pub time mean (ms):      %.3f\n", pubres.PubTimeMean)
-		//	fmt.Printf("Pub time std (ms):       %.3f\n", pubres.PubTimeStd)
-		//	fmt.Printf("Pub Bandwidth (msg/sec): %.3f\n", pubres.PubsPerSec)
-		//}
-		//fmt.Printf("\n")
-		//for _, subres := range subresults {
-		//	fmt.Printf("=========== SUBSCRIBER %d ===========\n", subres.ID)
-		//	fmt.Printf("Forward Success Ratio:       %.3f%% (%d/%d)\n", subres.FwdRatio*100, subres.Received, subres.Published)
-		//	fmt.Printf("Forward latency min (ms):    %.3f\n", subres.FwdLatencyMin)
-		//	fmt.Printf("Forward latency max (ms):    %.3f\n", subres.FwdLatencyMax)
-		//	fmt.Printf("Forward latency std (ms):    %.3f\n", subres.FwdLatencyStd)
-		//	fmt.Printf("Mean forward latency (ms):   %.3f\n", subres.FwdLatencyMean)
-		//                fmt.Printf("Average Receiving Rate (msg/sec):   %.3f\n", subres.AvgMsgsPerSec )
-		//}
-
 		fmt.Printf("\n")
 		fmt.Printf("================= TOTAL PUBLISHER (%d) =================\n", len(pubresults))
 		fmt.Printf("Total Publish Success Ratio:   %.2f%% (%d/%d)\n", pubtotals.PubRatio*100, pubtotals.Successes, pubtotals.Successes+pubtotals.Failures)
@@ -359,15 +338,7 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 		fmt.Printf("Forward latency mean std (ms):    %.2f\n", subtotals.FwdLatencyMeanStd)
 		fmt.Printf("Total Mean forward latency (ms):  %.2f\n\n", subtotals.FwdLatencyMeanAvg)
 
-		//fmt.Printf("======================================================\n")
-		//fmt.Printf("Total publishers: %d on %d topics\n", len(pubresults), ntopics)
-		//fmt.Printf("Total publish Success Ratio:   %.2f%% (%d/%d)\n", pubtotals.PubRatio*100, pubtotals.Successes, pubtotals.Successes+pubtotals.Failures)
-		//fmt.Printf("Total Bandwidth (msg/sec):     %.2f\n", pubtotals.TotalMsgsPerSec)
-		//fmt.Printf("Total subscribers: %d on %d topics\n", len(subresults), ntopics)
-		//fmt.Printf("Total Forward Success Ratio:      %.2f%% (%d/%d) <----- \n", subtotals.TotalFwdRatio*100, subtotals.TotalReceived, subtotals.TotalPublished)
-		//fmt.Printf("Total Mean forward latency (ms):  %.2f\n", subtotals.FwdLatencyMeanAvg)
 		fmt.Printf("Total Receiving rate (msg/sec): %.2f\n", subtotals.TotalMsgsPerSec)
-		//fmt.Printf("Receiving rate: %.2f\n", subresults.Duration)
 	}
 	return
 }

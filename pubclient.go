@@ -33,7 +33,7 @@ type PubClient struct {
 	Lambda float64
 }
 
-func (c *PubClient) run(res chan *PubResults, ts chan int, distribution string) {
+func (c *PubClient) run(res chan *PubResults, ts chan int, distribution string, cv int) {
 	newMsgs := make(chan *Message)
 	pubMsgs := make(chan *Message)
 	doneGen := make(chan bool)
@@ -44,7 +44,7 @@ func (c *PubClient) run(res chan *PubResults, ts chan int, distribution string) 
 	// start generator
 	go c.genMessages(newMsgs, doneGen)
 	// start publisher
-	go c.pubMessages(newMsgs, pubMsgs, doneGen, donePub, distribution)
+	go c.pubMessages(newMsgs, pubMsgs, doneGen, donePub, distribution, cv)
 
 	runResults.ID = c.ID
 	times := []float64{}
@@ -98,7 +98,7 @@ func (c *PubClient) genMessages(ch chan *Message, done chan bool) {
 	return
 }
 
-func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan bool, distribution string) {
+func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan bool, distribution string, cv int) {
 	onConnected := func(client mqtt.Client) {
 		var delay float64 = 1
 		ctr := 0
@@ -130,7 +130,7 @@ func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan boo
 					delay = math.Max(r.ExpFloat64()/c.Lambda-float64(m.Delivered.Sub(m.Sent).Seconds()), 0)
 				} else if strings.ToLower(distribution) == "lognormal" {
 					// for lognormal distribution
-					cv := 4
+					//cv := 8
 					Ti := 1 / c.Lambda
 					v := math.Pow(float64(cv)*Ti, 2)
 					mu := math.Log(math.Pow(Ti, 2) / math.Sqrt(v+math.Pow(Ti, 2)))
