@@ -90,6 +90,10 @@ func main() {
 
 	var (
 		size         = flag.Int("size", 100, "Size of the messages payload (bytes).")
+		username     = flag.String("username", "", "MQTT username (empty if auth disabled)")
+		password     = flag.String("password", "", "MQTT password (empty if auth disabled)")
+		pubqos       = flag.Int("pubqos", 0, "QoS for published messages, default is 0")
+		subqos       = flag.Int("subqos", 0, "QoS for subscribed messages, default is 0")
 		count        = flag.Int("count", 1, "Number of messages to send per pubclient.")
 		quiet        = flag.Bool("quiet", false, "Suppress logs while running, default is false")
 		lambda       = flag.Float64("pubrate", 1.0, "Publishing exponential rate (msg/sec).")
@@ -101,26 +105,7 @@ func main() {
 
 	flag.Parse()
 
-	//if *clients < 1 {
-	//	log.Fatal("Invlalid arguments")
-	//}
-
-	username := ""
-	password := ""
-	pubqos := 0
-	subqos := 0
 	format := "text"
-
-	//Create slice with topics
-	//topic_slice := make([]string, 0)
-	//k := 0
-	//for i := 0; i < *clients; i++ {
-	//	topic_slice = append(topic_slice, "topic-"+strconv.Itoa(k))
-	//	k++
-	//	if k == *ntopics {
-	//		k = 0
-	//	}
-	//}
 
 	var user Users
 	var arraySubTopics []map[string]byte
@@ -135,7 +120,7 @@ func main() {
 	subCnt := 0
 
 	if !*quiet {
-		log.Printf("Starting subscribe..\n")
+		log.Printf("Starting to subscribe...\n")
 	}
 
 	for i := 0; i < len(user.Subscribers); i++ {
@@ -143,10 +128,10 @@ func main() {
 			ID: strconv.FormatFloat(user.Subscribers[i].SubID, 'f', -1, 64),
 			//BrokerURL:  "tcp://localhost:1883",
 			BrokerURL:  nodeIDs[user.Subscribers[i].NodeID],
-			BrokerUser: username,
-			BrokerPass: password,
+			BrokerUser: *username,
+			BrokerPass: *password,
 			SubTopic:   arraySubTopics[i],
-			SubQoS:     byte(subqos),
+			SubQoS:     byte(*subqos),
 			Quiet:      *quiet,
 			Count:      *count,
 		}
@@ -160,7 +145,7 @@ SUBJOBDONE:
 			subCnt++
 			if subCnt == len(user.Subscribers) {
 				if !*quiet {
-					log.Printf("all subscribe job done.\n")
+					log.Printf("All subscribtion jobs are done.\n")
 				}
 				break SUBJOBDONE
 			}
@@ -183,12 +168,12 @@ SUBJOBDONE:
 			ID: strconv.FormatFloat(user.Publishers[i].PubID, 'f', -1, 64),
 			//BrokerURL:  "tcp://localhost:1883",
 			BrokerURL:  nodeIDs[user.Publishers[i].NodeID],
-			BrokerUser: username,
-			BrokerPass: password,
+			BrokerUser: *username,
+			BrokerPass: *password,
 			PubTopic:   user.Publishers[i].TopicList,
 			MsgSize:    *size,
 			MsgCount:   *count,
-			PubQoS:     byte(pubqos),
+			PubQoS:     byte(*pubqos),
 			Quiet:      *quiet,
 			Lambda:     *lambda,
 		}
@@ -316,7 +301,7 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 		}
 		data, _ := json.Marshal(jr)
 		var out bytes.Buffer
-		json.Indent(&out, data, "", "\t")
+		_ = json.Indent(&out, data, "", "\t")
 
 		fmt.Println(string(out.Bytes()))
 	default:
@@ -330,8 +315,8 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 		fmt.Printf("Pub time mean std (ms):        %.2f\n", pubtotals.PubTimeMeanStd)
 		fmt.Printf("Average Bandwidth (msg/sec):   %.2f\n", pubtotals.AvgMsgsPerSec)
 		fmt.Printf("Total Bandwidth (msg/sec):     %.2f\n\n", pubtotals.TotalMsgsPerSec)
-
 		fmt.Printf("================= TOTAL SUBSCRIBER (%d) =================\n", len(subresults))
+
 		fmt.Printf("Total Forward Success Ratio:      %.2f%% (%d/%d)\n", subtotals.TotalFwdRatio*100, subtotals.TotalReceived, subtotals.TotalPublished)
 		fmt.Printf("Forward latency min (ms):         %.2f\n", subtotals.FwdLatencyMin)
 		fmt.Printf("Forward latency max (ms):         %.2f\n", subtotals.FwdLatencyMax)

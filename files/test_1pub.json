@@ -1,0 +1,6 @@
+{ "publisher" : 
+[
+{"pub_id" : 1.1 , "node_id" : 1 , "topic_list" : [1]}], "subscriber" :
+[
+{"sub_id" : 1.1 , "node_id" : 1 , "topic_list" : [1]}]
+}

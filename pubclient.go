@@ -6,6 +6,7 @@ import (
 	"gonum.org/v1/gonum/stat/distuv"
 	"log"
 	"math"
+	"os"
 	"strings"
 
 	"golang.org/x/exp/rand"
@@ -81,9 +82,6 @@ func (c *PubClient) genMessages(ch chan *Message, done chan bool) {
 	///r := rand.New(rand.NewSource(99))
 	//r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < c.MsgCount; i++ {
-		//delay = r.ExpFloat64() / c.Lambda
-		//time.Sleep(time.Duration(delay*1000000) * time.Microsecond)
-		//fmt.Println(delay)
 
 		ch <- &Message{
 			Topic: strconv.Itoa(c.PubTopic[0]),
@@ -94,15 +92,15 @@ func (c *PubClient) genMessages(ch chan *Message, done chan bool) {
 		}
 	}
 	done <- true
-	// log.Printf("PUBLISHER %v is done generating messages\n", c.ID)
+	log.Printf("PUBLISHER %v is done generating messages\n", c.ID)
 	return
 }
 
 func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan bool, distribution string, cv int) {
 	onConnected := func(client mqtt.Client) {
-		var delay float64 = 1
+		var delay float64
+
 		ctr := 0
-		//r := rand.New(rand.NewSource(uint64(time.Now().UnixNano())))
 
 		for {
 			select {
@@ -110,10 +108,13 @@ func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan boo
 				m.Sent = time.Now()
 				convertedTime := strconv.FormatInt(m.Sent.UnixNano(), 10)
 				m.Payload = bytes.Join([][]byte{[]byte(convertedTime), make([]byte, c.MsgSize)}, []byte("#@#"))
-				//print time
-				// fmt.Printf(strconv.FormatInt(time.Now().UnixNano(), 10) + "\n")
+
+				// publish a message and increment msg counter
 				token := client.Publish(m.Topic, m.QoS, false, m.Payload)
 				token.Wait()
+				out <- m
+				ctr++
+
 				if token.Error() != nil {
 					log.Printf("Publisher-%v Error sending message: %v\n", c.ID, token.Error())
 					m.Error = true
@@ -121,26 +122,27 @@ func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan boo
 					m.Delivered = time.Now()
 					m.Error = false
 				}
-				out <- m
-				ctr++
 
-				// for poisson distribution
 				if strings.ToLower(distribution) == "poisson" {
+					// for poisson distribution
 					r := rand.New(rand.NewSource(uint64(time.Now().UnixNano())))
 					delay = math.Max(r.ExpFloat64()/c.Lambda-float64(m.Delivered.Sub(m.Sent).Seconds()), 0)
 				} else if strings.ToLower(distribution) == "lognormal" {
 					// for lognormal distribution
-					//cv := 8
 					Ti := 1 / c.Lambda
 					v := math.Pow(float64(cv)*Ti, 2)
 					mu := math.Log(math.Pow(Ti, 2) / math.Sqrt(v+math.Pow(Ti, 2)))
-					sigma := math.Sqrt(math.Log(v/math.Pow(Ti, 2) + 1))
+					sigma := math.Sqrt(math.Log((v / math.Pow(Ti, 2)) + 1))
 					src := rand.New(rand.NewSource(uint64(time.Now().UnixNano())))
-					delay = distuv.LogNormal{Mu: mu, Sigma: sigma, Src: src}.Rand()
+					delay = math.Max(distuv.LogNormal{Mu: mu, Sigma: sigma, Src: src}.Rand()-float64(m.Delivered.Sub(m.Sent).Seconds()), 0)
+				} else {
+					log.Println("Typed wrong distribution as argument. Exiting...")
+					os.Exit(1)
 				}
 
-				//fmt.Println(m.Delivered.Sub(m.Sent).Seconds())
+				// wait for next msg publication
 				time.Sleep(time.Duration(delay*1000000) * time.Microsecond)
+
 			case <-doneGen:
 				if !c.Quiet {
 					log.Printf("Publisher-%v connected to broker %v, published on topic: %v\n", c.ID, c.BrokerURL, c.PubTopic)
