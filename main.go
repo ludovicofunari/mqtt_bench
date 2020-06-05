@@ -305,6 +305,8 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 
 		fmt.Println(string(out.Bytes()))
 	default:
+		// TODO: specify distribution
+		//fmt.Printf("\nPublished using a %v distribution ")
 		fmt.Printf("\n")
 		fmt.Printf("================= TOTAL PUBLISHER (%d) =================\n", len(pubresults))
 		fmt.Printf("Total Publish Success Ratio:   %.2f%% (%d/%d)\n", pubtotals.PubRatio*100, pubtotals.Successes, pubtotals.Successes+pubtotals.Failures)
@@ -315,8 +317,8 @@ func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresul
 		fmt.Printf("Pub time mean std (ms):        %.2f\n", pubtotals.PubTimeMeanStd)
 		fmt.Printf("Average Bandwidth (msg/sec):   %.2f\n", pubtotals.AvgMsgsPerSec)
 		fmt.Printf("Total Bandwidth (msg/sec):     %.2f\n\n", pubtotals.TotalMsgsPerSec)
-		fmt.Printf("================= TOTAL SUBSCRIBER (%d) =================\n", len(subresults))
 
+		fmt.Printf("================= TOTAL SUBSCRIBER (%d) =================\n", len(subresults))
 		fmt.Printf("Total Forward Success Ratio:      %.2f%% (%d/%d)\n", subtotals.TotalFwdRatio*100, subtotals.TotalReceived, subtotals.TotalPublished)
 		fmt.Printf("Forward latency min (ms):         %.2f\n", subtotals.FwdLatencyMin)
 		fmt.Printf("Forward latency max (ms):         %.2f\n", subtotals.FwdLatencyMax)

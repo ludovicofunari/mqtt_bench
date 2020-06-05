@@ -41,20 +41,8 @@ func populateFromFile(fileName string, nodeport int) (Users, []map[string]byte, 
 
 	nodePort := strconv.Itoa(nodeport)
 	nodeIDs[0] = "tcp://localhost:1883"
-	nodeIDs[1] = "tcp://192.168.3.6:" + nodePort
-	nodeIDs[2] = "tcp://192.168.3.9:" + nodePort
-	//nodeIDs[3] = "tcp://192.168.3.4:" + nodePort
-	//nodeIDs[4] = "tcp://192.168.3.5:" + nodePort
-
-	//nodeIDs[1] = "tcp://192.168.3.4:" + nodePort //vm2
-	//nodeIDs[2] = "tcp://192.168.3.5:" + nodePort //vm3
-	//nodeIDs[3] = "tcp://192.168.3.6:" + nodePort //vm4
-	//nodeIDs[4] = "tcp://192.168.3.9:" + nodePort //vm6
-
-	//nodeIDs[5] = "tcp://192.168.3.10:" + nodePort
-	//nodeIDs[6] = "tcp://192.168.3.11:" + nodePort
-	//nodeIDs[7] = "tcp://192.168.3.12:" + nodePort
-	//nodeIDs[8] = "tcp://192.168.3.13:" + nodePort
+	// insert here the list of broker nodes
+	nodeIDs[1] = "tcp://192.168.3.5:" + nodePort
 
 	arraySubTopics := make([]map[string]byte, len(user.Subscribers))
 	var str string

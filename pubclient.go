@@ -92,7 +92,9 @@ func (c *PubClient) genMessages(ch chan *Message, done chan bool) {
 		}
 	}
 	done <- true
-	log.Printf("PUBLISHER %v is done generating messages\n", c.ID)
+	if !c.Quiet {
+		log.Printf("PUBLISHER %v is done generating messages\n", c.ID)
+	}
 	return
 }
 
@@ -109,11 +111,9 @@ func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan boo
 				convertedTime := strconv.FormatInt(m.Sent.UnixNano(), 10)
 				m.Payload = bytes.Join([][]byte{[]byte(convertedTime), make([]byte, c.MsgSize)}, []byte("#@#"))
 
-				// publish a message and increment msg counter
+				// publish a message
 				token := client.Publish(m.Topic, m.QoS, false, m.Payload)
 				token.Wait()
-				out <- m
-				ctr++
 
 				if token.Error() != nil {
 					log.Printf("Publisher-%v Error sending message: %v\n", c.ID, token.Error())
@@ -143,6 +143,8 @@ func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan boo
 				// wait for next msg publication
 				time.Sleep(time.Duration(delay*1000000) * time.Microsecond)
 
+				out <- m
+				ctr++
 			case <-doneGen:
 				if !c.Quiet {
 					log.Printf("Publisher-%v connected to broker %v, published on topic: %v\n", c.ID, c.BrokerURL, c.PubTopic)
