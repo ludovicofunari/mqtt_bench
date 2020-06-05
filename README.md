@@ -4,7 +4,7 @@ this tool, we used [this github repository](https://github.com/hui6075/mqtt-bm-l
 modifications to meet the requirements for our testing.  
 
 
-```bash
+```sh
 $ mqtt_bench --help
 
   -count int
@@ -37,7 +37,7 @@ $ mqtt_bench --help
 This version is specific for Kubernetes deployed clusters using a _NodePort_ service to expose the MQTT cluster to 
 the outside, in order to evaluate its performances, but it can be easily modified as a local deployment.
 
-### Subscriptions and Publications
+### Spreading MQTT Clients Across The Cluster
 Instead of using a fixing number of MQTT clients, the tool requires a `json` file as input. This gives further
 flexibility allowing a finer tuning for the measurements, for example to easily discriminate between subscribers 
 and publishers for their number of connections, as well as their topics of interest.
@@ -73,6 +73,11 @@ This file is the result of a MATLAB simulation which, depending on the algorithm
 client must be attached to, with how many topics of interest. Specifically, we used two algorithms: 
 the _random-attach_ and the _greedy_ one.
 Below, we can see a MATLAB code snippet of both of them.
+
+#### Random Attach Algorithm
+This algorithm simulates the role of the load-balancer that, typically, attaches the underlying TCP connection 
+to one of the internal brokers, chosen at random, when an MQTT client (publisher or subscriber) 
+establishes a session with the cluster. 
 
 ```matlab
 % returns two matrices Ns(i,k) and Np(i,k) where the element (i,k) represents the number
@@ -123,6 +128,51 @@ if fileIDSub~=0
     fprintf(fileIDSub,']');
 end 
 ```
+
+#### Greedy Algorithm
+The following greedy algorithm, aims at reducing the internal traffic.    
+
+We define _Ta<sub>k</sub>_ as the set of _active_ topics of the _k-th_ broker, 
+where a topic is active if there exists at least a subscriber or a publisher 
+of that topic on the broker. Assuming that an incoming client is interested 
+in a set of topics _Tc_ out of the possible _Ntop_ ones, _Tc<sub>j</sub>_ is the _j-th_ 
+topic of the set _Tc_ and the size of the set is indicated as `len(Tc)`.
+
+We assume the client is either a publisher or a subscriber.   
+If the client is a subscriber, the increase of _&Delta;Ai_ of the internal traffic, resulting 
+from its connection to broker _k_, can be written as the Equation 1: 
+
+![Eq.1](files/eq1.png)
+![Eq.2](files/eq2.png)
+
+
+
+because, if the topic _Tc<sub>j</sub>_ is not active on the _k-th_ broker (_Tc<sub>j</sub>_ &notin; _Ta<sub>k</sub>_), 
+and the publisher of the topic is connected to the cluster, then the broker starts 
+receiving the related publications at a rate equal to _&lambda;<sub>Tc<sub>j</sub></sub>_. Otherwise, 
+no additional internal traffic is generated.
+
+If instead the client is a publisher, the internal traffic increase _&Delta;Ai_ resulting from its connection 
+to broker _k_ can be written as: 
+
+![Eq.3](files/eq3.png)
+
+because, after the connection of the client, the publications of the _j-th_ topic of _Tc_ are transferred to every 
+other broker having at least a subscriber, i.e. having the topic active. If the client is both a subscriber and a 
+publisher we can use Eq. 1 for the set of subscribed topics and  Eq. 3 for the topics 
+for which the client is a publisher.  
+
+
+The Eq. 1 and 3 initially drove us to design a _best-matching_ greedy 
+strategy, which follows the minimization in Eq. 4. Simply, when a new client arrives, the algorithm 
+connects it to the broker that provides the lowest increase in internal traffic. However, to ensure a fair balance 
+of external traffic among brokers, not all brokers can be selected. Indeed, the set of candidates is made up of 
+brokers whose incoming and outgoing external traffics are equal to the fairly share values of _Aei/M_ and _Aeo/M_, 
+respectively, except for a tolerance fairness factor &gamma; &ge; 1. The greater &gamma;, the smaller the fairness 
+level.  
+
+![Eq.4](files/eq4.png)
+
 
 ```matlab
 % greedy
@@ -183,6 +233,7 @@ for j=1:length(st)
 end
 ```
 
+## Publishing
 Firstly, the subscribers are spread across the cluster. 
 After all the subscriptions to their designated borker are successful, the publishers can start publishing their 
 messages at a specific rate, both can be fixed through the command line using the arguments `count` and `pubrate` 
@@ -194,10 +245,9 @@ The _Poisson distribution_ is the default way to publish MQTT messages, but it c
 `dist` to a _Lognormal distribution_  with its _coefficient of variation_ (cv) accordingly, if burst of data are 
 to be examined. 
 
-## Running an example
 An example can help to better visualize the benchmark capabilities:
 
-```bash
+```sh
 ./mqtt_bench -file files/social_vs_nodes_rnd_M1.json -nodeport 31947 -count 10 -pubrate 1 -quiet
 
 ================= TOTAL PUBLISHER (1000) =================
@@ -222,4 +272,3 @@ All jobs done. Time spent for the benchmark: 10s
 ======================================================
 
 ```
-sudo apt install
