@@ -80,16 +80,11 @@ to one of the internal brokers, chosen at random, when an MQTT client (publisher
 establishes a session with the cluster. 
 
 ```matlab
-% returns two matrices Ns(i,k) and Np(i,k) where the element (i,k) represents the number
-% of subscribers and publishers respectively, of the topic i connected to node k
-
-% Ns(i,k) matrix where the element (i,k) represents the number of subscribers of the topic i connected to node k
-% Np(i,k) matrix where the element (i,k) represents the number of publishers of the topic i connected to node k
-
 % Ntopic: number of topics
 % M: number of nodes
-% st: topic index for each subscriber 
-% pt: topic index for each publisher 
+% h: user id
+% k: node id
+% t: topic list
 
 for h=1:Nptot
     % for each publisher select the topic and nodes 
@@ -153,7 +148,7 @@ receiving the related publications at a rate equal to _&lambda;<sub>Tc<sub>j</su
 no additional internal traffic is generated.
 
 If instead the client is a publisher, the internal traffic increase _&Delta;Ai_ resulting from its connection 
-to broker _k_ can be written as: 
+to broker _k_ can be written as the Equation 3: 
 
 ![Eq.3](files/eq3.png)
 
@@ -175,7 +170,16 @@ level.
 
 
 ```matlab
-% greedy
+% Ntopic: number of topics
+% M number of nodes
+% gamma: unbalance factor
+% Nses: number of session per client
+% h: pub id
+% j: sub id
+% s: session id
+% k, node_id: node id
+% t: topic list
+
 for h=1:Nptot
     % for each publisher select the topic and nodes, considering that any subscriber can be the publisher 
     k = find(Ns(pt(h),:)>0,1);
@@ -245,7 +249,7 @@ The _Poisson distribution_ is the default way to publish MQTT messages, but it c
 `dist` to a _Lognormal distribution_  with its _coefficient of variation_ (cv) accordingly, if burst of data are 
 to be examined. 
 
-An example can help to better visualize the benchmark capabilities:
+An example using one broker, can help to better visualize the benchmark capabilities:
 
 ```sh
 ./mqtt_bench -file files/social_vs_nodes_rnd_M1.json -nodeport 31947 -count 10 -pubrate 1 -quiet
