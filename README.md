@@ -1,36 +1,34 @@
 # Golang MQTT Latency Benchmark
 This is a Golang benchmarking tool used to measure latency in MQTT clusters. As a starting point for the developing of 
-this tool, we used [this github repository](https://github.com/hui6075/mqtt-bm-latency), from which we made some 
-modifications to meet the requirements for our testing.  
+this tool, we used [this GitHub repository](https://github.com/hui6075/mqtt-bm-latency), from which we made some 
+modifications to meet the requirements for our testing. 
+
+This tool requires at least a `1.14.x` version of golang to make it work.
 
 
 ```sh
 $ mqtt_bench --help
 
   -count int
-        Number of messages to send per pubclient. (default 1)
+        Number of messages to send per pubclient (default 1)
   -cv int
-        Select coefficient of variation for the Lognormal distribution (default 4) (default 4)
+        Select coefficient of variation for the Lognormal distribution (default 4).
   -dist string
-        Select Poisson or Lognormal distribution (default Poisson) (default "poisson")
+        Select Poisson or Lognormal distribution (default "poisson").
   -file string
-        Import subscribers, publishers and topic information from file. (default "files/test_1pub.json")
+        Import subscribers, publishers and topic information from file (default "files/test_1pub.json").
   -nodeport int
-        Kubernetes NodepPort for VerneMQ MQTT service. (default 30123)
-  -password string
-        MQTT password (empty if auth disabled)
+        Kubernetes NodepPort for VerneMQ MQTT service (default 30123).
   -pubqos int
-        QoS for published messages, default is 0
+        QoS for published messages (default 0).
   -pubrate float
-        Publishing exponential rate (msg/sec). (default 1)
+        Publishing exponential rate (msg/sec) (default 1).
   -quiet
-        Suppress logs while running, default is false
+        Suppress logs while running (default false).
   -size int
-        Size of the messages payload (bytes). (default 100)
+        Size of the messages payload (bytes) (default 100).
   -subqos int
-        QoS for subscribed messages, default is 0
-  -username string
-        MQTT username (empty if auth disabled)
+        QoS for subscribed messages (default 0).
 ```
 
 
@@ -39,10 +37,10 @@ the outside, in order to evaluate its performances, but it can be easily modifie
 
 ### Spreading MQTT Clients Across The Cluster
 Instead of using a fixing number of MQTT clients, the tool requires a `json` file as input. This gives further
-flexibility allowing a finer tuning for the measurements, for example to easily discriminate between subscribers 
+flexibility allowing a finer tuning for the measurements, for example, to easily discriminate between subscribers 
 and publishers for their number of connections, as well as their topics of interest.
 
-In particular, in order to distribute the MQTT subscribers and publishers across the cluster, the input `json` file, 
+In particular, to distribute the MQTT subscribers and publishers across the cluster, the input `json` file, 
 consists of a list of publishers and subscribers. Each of them has its own unique identifier, its destination broker 
 node as well as its topic list.
 
@@ -137,9 +135,8 @@ We assume the client is either a publisher or a subscriber.
 If the client is a subscriber, the increase of _&Delta;Ai_ of the internal traffic, resulting 
 from its connection to broker _k_, can be written as the Equation 1: 
 
-![Eq.1](files/eq1.png)
-![Eq.2](files/eq2.png)
-
+<img src="https://raw.githubusercontent.com/ludfun/mqtt_bench/master/files/eq1.png" width="250" height="100">
+<img src="https://raw.githubusercontent.com/ludfun/mqtt_bench/master/files/eq2.png" width="400" height="60">  
 
 
 because, if the topic _Tc<sub>j</sub>_ is not active on the _k-th_ broker (_Tc<sub>j</sub>_ &notin; _Ta<sub>k</sub>_), 
@@ -150,7 +147,7 @@ no additional internal traffic is generated.
 If instead the client is a publisher, the internal traffic increase _&Delta;Ai_ resulting from its connection 
 to broker _k_ can be written as the Equation 3: 
 
-![Eq.3](files/eq3.png)
+<img src="https://raw.githubusercontent.com/ludfun/mqtt_bench/master/files/eq3.png" width="300" height="80">  
 
 because, after the connection of the client, the publications of the _j-th_ topic of _Tc_ are transferred to every 
 other broker having at least a subscriber, i.e. having the topic active. If the client is both a subscriber and a 
@@ -166,7 +163,8 @@ brokers whose incoming and outgoing external traffics are equal to the fairly sh
 respectively, except for a tolerance fairness factor &gamma; &ge; 1. The greater &gamma;, the smaller the fairness 
 level.  
 
-![Eq.4](files/eq4.png)
+<img src="https://raw.githubusercontent.com/ludfun/mqtt_bench/master/files/eq4.png" width="180" height="120">  
+
 
 
 ```matlab
@@ -239,17 +237,17 @@ end
 
 ## Publishing
 Firstly, the subscribers are spread across the cluster. 
-After all the subscriptions to their designated borker are successful, the publishers can start publishing their 
-messages at a specific rate, both can be fixed through the command line using the arguments `count` and `pubrate` 
-as well as the size of each message using `size`. The default MQTT Quality of Service (QoS) for both subscriptions 
+After all the subscriptions to their designated broker are successful, the publishers can start publishing their 
+messages at a specific rate, both can be fixed through the command line using the arguments `-count` and `-pubrate` 
+as well as the size of each message using `-size`. The default MQTT Quality of Service (QoS) for both subscriptions 
 and publications is set to QoS 0, but it can also be changed from the command line.
 
 
 The _Poisson distribution_ is the default way to publish MQTT messages, but it can be changed using the argument 
-`dist` to a _Lognormal distribution_  with its _coefficient of variation_ (cv) accordingly, if burst of data are 
+`-dist` to a _Lognormal distribution_  with its _coefficient of variation_ (cv) accordingly, if a burst of data is 
 to be examined. 
 
-An example using one broker, can help to better visualize the benchmark capabilities:
+An example using one broker can help to better visualize the benchmark capabilities:
 
 ```sh
 ./mqtt_bench -file files/social_vs_nodes_rnd_M1.json -nodeport 31947 -count 10 -pubrate 1 -quiet

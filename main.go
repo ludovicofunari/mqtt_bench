@@ -1,15 +1,12 @@
 package main
 
 import (
-	"bytes"
-	"strconv"
-	//"bytes"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/GaryBoone/GoStats/stats"
 	"log"
 	"math"
+	"strconv"
 	"time"
 )
 
@@ -78,20 +75,10 @@ type TotalPubResults struct {
 	AvgMsgsPerSec   float64 `json:"avg_msgs_per_sec"`
 }
 
-// JSONResults are used to export results as a JSON document
-type JSONResults struct {
-	PubRuns   []*PubResults    `json:"publish runs"`
-	SubRuns   []*SubResults    `json:"subscribe runs"`
-	PubTotals *TotalPubResults `json:"publish totals"`
-	SubTotals *TotalSubResults `json:"receive totals"`
-}
-
 func main() {
 
 	var (
 		size         = flag.Int("size", 100, "Size of the messages payload (bytes).")
-		username     = flag.String("username", "", "MQTT username (empty if auth disabled)")
-		password     = flag.String("password", "", "MQTT password (empty if auth disabled)")
 		pubqos       = flag.Int("pubqos", 0, "QoS for published messages, default is 0")
 		subqos       = flag.Int("subqos", 0, "QoS for subscribed messages, default is 0")
 		count        = flag.Int("count", 1, "Number of messages to send per pubclient.")
@@ -105,6 +92,8 @@ func main() {
 
 	flag.Parse()
 
+	username := ""
+	password := ""
 	format := "text"
 
 	var user Users
@@ -128,8 +117,8 @@ func main() {
 			ID: strconv.FormatFloat(user.Subscribers[i].SubID, 'f', -1, 64),
 			//BrokerURL:  "tcp://localhost:1883",
 			BrokerURL:  nodeIDs[user.Subscribers[i].NodeID],
-			BrokerUser: *username,
-			BrokerPass: *password,
+			BrokerUser: username,
+			BrokerPass: password,
 			SubTopic:   arraySubTopics[i],
 			SubQoS:     byte(*subqos),
 			Quiet:      *quiet,
@@ -168,8 +157,8 @@ SUBJOBDONE:
 			ID: strconv.FormatFloat(user.Publishers[i].PubID, 'f', -1, 64),
 			//BrokerURL:  "tcp://localhost:1883",
 			BrokerURL:  nodeIDs[user.Publishers[i].NodeID],
-			BrokerUser: *username,
-			BrokerPass: *password,
+			BrokerUser: username,
+			BrokerPass: password,
 			PubTopic:   user.Publishers[i].TopicList,
 			MsgSize:    *size,
 			MsgCount:   *count,
@@ -212,7 +201,7 @@ SUBJOBDONE:
 	subtotals := calculateSubscribeResults(subresults, pubresults)
 
 	// print stats
-	printResults(pubresults, pubtotals, subresults, subtotals, format)
+	printResults(pubresults, pubtotals, subresults, subtotals, format, *distribution, *cv)
 
 	fmt.Printf("All jobs done. Time spent for the benchmark: %vs\n", math.Round(float64(*count) / *lambda))
 	fmt.Println("======================================================")
@@ -290,23 +279,14 @@ func calculateSubscribeResults(subresults []*SubResults, pubresults []*PubResult
 	return subtotals
 }
 
-func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresults []*SubResults, subtotals *TotalSubResults, format string) {
+func printResults(pubresults []*PubResults, pubtotals *TotalPubResults, subresults []*SubResults, subtotals *TotalSubResults, format string, distribution string, cv int) {
+	pubString := fmt.Sprintf("Published using a %v distribution. ", distribution)
+	if distribution == "lognormal" {
+		pubString += fmt.Sprintf("\nIts coefficient of variation is set to: %v", cv)
+	}
 	switch format {
-	case "json":
-		jr := JSONResults{
-			PubRuns:   pubresults,
-			SubRuns:   subresults,
-			PubTotals: pubtotals,
-			SubTotals: subtotals,
-		}
-		data, _ := json.Marshal(jr)
-		var out bytes.Buffer
-		_ = json.Indent(&out, data, "", "\t")
-
-		fmt.Println(string(out.Bytes()))
-	default:
-		// TODO: specify distribution
-		//fmt.Printf("\nPublished using a %v distribution ")
+	case "text":
+		fmt.Printf("\n%v\n", pubString)
 		fmt.Printf("\n")
 		fmt.Printf("================= TOTAL PUBLISHER (%d) =================\n", len(pubresults))
 		fmt.Printf("Total Publish Success Ratio:   %.2f%% (%d/%d)\n", pubtotals.PubRatio*100, pubtotals.Successes, pubtotals.Successes+pubtotals.Failures)
