@@ -33,7 +33,9 @@ $ mqtt_bench --help
 
 
 This version is specific for Kubernetes deployed clusters using a _NodePort_ service to expose the MQTT cluster to 
-the outside, in order to evaluate its performances, but it can be easily modified as a local deployment.
+the outside, in order to evaluate its performances, but it can be easily modified as a local deployment. It is important
+to add the nodes address in the [populateFromFile.go](populateFromFile.go) `nodeIDs` map, 
+for example as, `nodeIDs[1] = "tcp://192.168.1.2:" + nodePort`.
 
 ### Spreading MQTT Clients Across The Cluster
 Instead of using a fixing number of MQTT clients, the tool requires a `json` file as input. This gives further
