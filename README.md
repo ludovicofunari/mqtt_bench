@@ -252,6 +252,8 @@ An example using one broker can help to better visualize the benchmark capabilit
 ```sh
 ./mqtt_bench -file files/social_vs_nodes_rnd_M1.json -nodeport 31947 -count 10 -pubrate 1 -quiet
 
+Published using a poisson distribution.
+
 ================= TOTAL PUBLISHER (1000) =================
 Total Publish Success Ratio:   100.00% (10000/10000)
 Average Runtime (sec):         10.50
